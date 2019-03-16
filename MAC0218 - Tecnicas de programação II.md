@@ -236,6 +236,72 @@ catch :refaz do
 end
 ```
 ---
+# Aula 12/03
+
+## Metaprogramação
+Como Ruby é uma linguage de script interpretada, é possivel extender o codigo em tempo de execução, e isso damos o nome de metaprogração.
+
+A rigor, toda chamada de um metodo é uma mensagem ao objeto dizendo a ele o que deve ser feito. Isso aparece de forma bem explicita em ruby:
+
+```ruby
+class C
+    def grite
+        puts 'AAAAAAAAAAAAAAAAAAAAA'
+    end
+end
+
+obj = C.new
+obj.grite
+obj.send 'grite'
+obj.send :grite
+g = "grite"
+obj.send(g)
+
+# Todas essas ultimas linhas, essencialmente, fazem a mesma coisa
+```
+
+### Objetos abertos
+Quando uma instancia é criada, ela ganha uma classe adicional so para ela. Essa nova classe é inserida na hierarquia entre a instancia e a classe mãe, é chamada de **singleton**.
+Podemos alterar essa classe, fazendo com que uma instancia ganhe novos metodos:
+```ruby
+class A
+end
+
+a = A.new
+b = A.new
+
+def b.oi
+    puts "oiiiiiiiii"
+end
+
+a.oi # Da erro
+b.oi # Executa a classe criada
+```
+
+Uma outra caracteristica é permitir que um bloco seja executado dentro do escopo de uma instancia.
+
+```Ruby
+class A
+    def initialize
+        @um = 666
+    end
+
+    def um
+        @um
+    end
+end
+
+a = A.new
+a.instance_eval { puts 2*um }
+a.instance_eval { puts 2*@um }
+a.instance_eval " puts 'oiii' "
+a.instance_eval "def uia ; puts 'caramba' ; end"
+a.uia
+```
+Aqui, o `instance_eval` serve como um injetor de codigo para dentro da classe,
+podendo imprimir variaveis privadas e ate mesmo criar novos metodos, como o `uia`.
+
+---
 # Aula 14/03
 
 ## Computação na nuvem
