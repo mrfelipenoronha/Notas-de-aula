@@ -17,7 +17,7 @@ Thread é o fluxo de execução de um processo. Um processo pode ter varias thre
 Concorrencia é lidar com varias coisas ao mesmo tempo, varios processos ao mesmo tempo. Paralelismo é fazer varias coisas ao mesmo tempo
 
 ### Operação atomica
-Operação que acontece na CPU, que não pode ser iterrompida.
+Operação que acontece na CPU, que não pode ser iterrompida. Ela tem que entrar so uma vez na CPU para acontecer, não fazendo uso de muitos clocks.
 
 ### Taxinoma de Flynn
 - SISD: Single instruction single data. Padrão, cada processo altera um unico dado;
@@ -32,7 +32,7 @@ As threads podem ocorrer ao mesmo tempo ou em tempo diferentes. Com isso, podemo
 Trecho de codigo que deve ser executado inteiramente por uma thread, antes que qualquer coisa outra thread o comece a executar. É uma maneira de impedir esse erro da race condition. Para isso, usamos semafaros.
 
 ### Semaforos
-Controle de acesso a um recurso. Conta o numero de processos que podem usar um recursoao mesmo tempo sem que nenhum outro deixe de usar.
+Controle de acesso a um recurso. Conta o numero de processos que podem usar um recurso ao mesmo tempo sem que nenhum outro deixe de usar.
 
  - **MUTEX**: Semaforos que so permitem valores 0 e 1. So permite o acesso a uma thread por vez, ou seja, uma tarefa que roda num semafaro vai ser a unica rodando naquele momento, é meio que uma forma de deixar só uma parte da tarefa sequencial.
 
@@ -45,4 +45,24 @@ Quando uma thread entra em uma barreira ela não pode terminar ate que todas as 
 ### Dependencia de dados
 So se pode paralelizar tarefas independetes.
 
+### DeadLocks
+Multiplos processos/threads bloqueados, esperando um pelo outro. Nenhum consegue terminar pois necessita dos dados dos outros.
+
+## POSIX Threads
+Para facilitar as coisas, o IEEE definiu um padrão para o uso de threads no UNIX, o PThreads. O PThreads tem a seguinte API:
+
+| Chamada | Descrição |
+| --- | --- |
+|Pthread_create|Cria uma nova thread|
+|Pthread_exit|Acaba a execução de uma thread|
+|Pthread_join|Espera ate que uma thread acabe|
+|Pthread_yieid|Libera a CPU para outra thread|
+|Pthread_attr_init|Cria e inicializa atributos de uma thread|
+|Pthread_attr_destroy|Remove os atributos de uma thread|
+
+Uma thread vai ser inicilizada como um ponteiro do tipo `pthread_t`
+
+> Terminar de estudar a partir da pagina 116 do livro   
+> Olhar: https://github.com/giulianobelinassi/critical-section/tree/master   
+> Olhar: https://github.com/MatheusBernardino/pi/blob/master/pi.c
 ---
