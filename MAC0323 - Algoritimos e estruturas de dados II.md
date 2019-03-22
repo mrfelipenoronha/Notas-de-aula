@@ -535,6 +535,366 @@ As operações são realizada em O(log n)
 
 ---
 
+# Aula 12/03
+
+## Mergeable Heaps
+
+O leftist heap é uma implementação da PQ que permite a união (merge) de duas filas seja feita de forma eficiente.
+
+Para isso, cada no X tem os seguintes campos:
+1. esq[x]: filho esquerdo de x;
+2. dir[x]: filho direito de x;
+3. dist[x]: menor cumprimento de um caminho de x a null.
+
+Uma arvore é esquerista se **dist[esq[x]] >= dist[dir[x]], para todo nó x**.
+
+O caminho direitista de um no **x** é a sequencia {x, dir[x], dir[dir[x]], ..., null}
+1. dcomp[x]: numero de nós no caminho direitista de x;
+2. tam[x]: numero de nos da arvore de raiz x.
+
+Se x é um no de uma arvore esquedista então dist[x] == dcomp[x].
+
+### Heap esquerdista
+
+H := arvore
+raiz[H] := raiz de H
+prior[x] := prioridade do no x
+pai[x] := pai do no x
+
+Um heap esquerdista H é uma arvore esquerdista que satisfaz:
+
+	prior[pai[x]] >= prior[x]
+
+para todo no x diferente da raiz.
+
+Com tal estrutura, podemos realizar uma operação LeftistHeapMerge(), que tem complexidade **O(log m)**, onde m = tam(raiz[h1]) + tam(raiz[h2]).
+
+Todas as operações e metodos implementados em um LeftistMaxPQ tem complexidade **O(lg n)**, onde n é o numero de itens na fila.
+
+
+```Java
+public class LeftistMaxPQ<Item extends Comparable<Item>> {
+
+    private Node root;
+    private int n;
+
+    private class Node {
+        private Item item;         
+        private Node left, right;
+        private int dist;          
+
+        public Node(Item item, Node left, Node right, int dist) {
+            this.item = item;
+            this.left = left;
+            this.right = right;
+            this.dist = dist;
+        }
+
+        public String toString() {
+            String s = "{Item: " + item + "(" + left + "),[" +
+                right + "] " + dist + "}";
+            return s;
+        }
+    }
+
+
+    // Initializes an empty priority queue.
+    public LeftistMaxPQ() {
+    }
+
+    public boolean isEmpty() {
+        return root == null;
+    }
+
+    public int size() {
+        return n;
+    }
+
+    public void insert(Item item) {
+        Node s = new Node(item, null, null, 1);
+        root = merge(root, s);
+        n++;
+    }
+
+    public Item delMax() {
+        Item max = root.item;
+        root = merge(root.left, root.right);
+        n--;
+        return max;
+    }
+
+	// Transform 'this' in the union 'this + that'
+    public void union(LeftistMaxPQ<Item> that) {
+        if (that == null) return ;
+        this.root = merge(this.root, that.root);
+        this.n += that.n;
+    }
+
+    // Merge mantendo MaxLeftist
+    private Node merge(Node r1, Node r2) {
+        if (r1 == null) return r2;
+        if (r2 == null) return r1;
+
+        // r1 != null and r2 != null
+        if (less(r1, r2)) {
+            Node tmp = r1; r1 = r2; r2 = tmp;
+        }
+        // r1 points to bigger item
+        if (r1.left == null) r1.left = r2;
+        else {
+            r1.right = merge(r1.right, r2);
+            if (r1.left.dist < r1.right.dist) {
+                // exchange left and right
+                Node t = r1.left;
+                r1.left = r1.right;
+                r1.right = t;
+            }
+            r1.dist = r1.right.dist + 1;
+        }
+
+        return r1;
+    }
+
+    private boolean less(Node r, Node s) {
+        return r.item.compareTo(s.item) < 0;
+    }
+}
+```
+
+
+## Binomial heaps/trees
+
+Arvores binomiais são definidas recursivamente:
+- Um no é a arvore binomial b0 de ordem 0.
+- Para k = 1, 2, ..., a arvore bonomial bk de ordem k consiste de duas arvores bk-1 ligadas de tal forma que a raiz de uma é o filho mais á esquerda da raiz da outra.
+
+Estrutura em uma arvore binomial bk de ordem k:
+1. A raiz tem k filhos;
+2. A arvore tem 2^k nós;
+3. A arvore tem altura k;
+4. Há exatamente (k|i) (= combinação) nós com profundidade i;
+5. Os filhos da raiz são as avores binomiais bk-1, bk-2, bk-3, ...
+
+**O grau maximo de qualquer nó em uma arvore binomial com n nós é lg(n).** Tal fato é fundamental para o consumo de tempo da binomial heap.
+
+Os filhos de nó serão representados atravez de uma lista ligada ordenada pelos graus (= order) dos filhos.
+
+### Binomial Heap
+
+Uma binomial heap H é uma coleção de binomial trees que satisfaz as seguintes propriedades:
+- Cada binomial tree em H é uma MinPQ (ou, tambem, uma MaxPQ), ou seja, o valor associado ao item de cada nó é menor ou igual (maior ou igual) ao valor associado de seus filhos.
+- H possui no maximo uma binomial tree de cada ordem.
+
+Assim, temos as seguintes operações e suas respectivas complexidades:
+
+| Função | complexidade  |
+| :------------- | :------------- |
+| insert() | O(1) (amortizado) |
+| delMin() | O(lgn) |
+| change() | O(lgn) |
+| union() | O(lgn) |
+
+```Java
+public class BinomialMinPQ<Key> implements Iterable<Key> {
+    private Node head; // Head of the list of roots
+    private final Comparator<Key> comp;	// Comparator over the keys
+
+    //Represents a Node of a Binomial Tree
+    private class Node {
+        Key key; // Key contained by the Node
+        int order;  // The order of the Binomial Tree rooted by this Node
+        Node child, sibling; // Child and sibling of this Node
+    }
+
+    public BinomialMinPQ() {
+        comp = new MyComparator();
+    }
+
+    public BinomialMinPQ(Comparator<Key> C) {
+        comp = C;
+    }
+
+    public BinomialMinPQ(Key[] a) {
+        comp = new MyComparator();
+        for (Key k : a) insert(k);
+    }
+
+    public BinomialMinPQ(Comparator<Key> C, Key[] a) {
+        comp = C;
+        for (Key k : a) insert(k);
+    }
+
+    public boolean isEmpty() {
+        return head == null;
+    }
+
+
+    public int size() {
+        int result = 0, tmp;
+        for (Node node = head; node != null; node = node.sibling) {
+            if (node.order > 30) { throw new ArithmeticException("The number of elements cannot be evaluated, but the priority queue is still valid."); }
+            tmp = 1 << node.order;
+            result |= tmp;
+        }
+        return result;
+    }
+
+    public void insert(Key key) {
+        Node x = new Node();
+        x.key = key;
+        x.order = 0;
+        BinomialMinPQ<Key> H = new BinomialMinPQ<Key>(); //The Comparator oh the H heap is not used
+        H.head = x;
+        this.head = this.union(H).head;
+    }
+
+    public Key minKey() {
+        if (isEmpty()) throw new NoSuchElementException("Priority queue is empty");
+        Node min = head;
+        Node current = head;
+        while (current.sibling != null) {
+            min = (greater(min.key, current.sibling.key)) ? current : min;
+            current = current.sibling;
+        }
+        return min.key;
+    }
+
+    public Key delMin() {
+        if(isEmpty()) throw new NoSuchElementException("Priority queue is empty");
+        Node min = eraseMin();
+        Node x = (min.child == null) ? min : min.child;
+        if (min.child != null) {
+            min.child = null;
+            Node prevx = null, nextx = x.sibling;
+            while (nextx != null) {
+                x.sibling = prevx;
+                prevx = x;
+                x = nextx;nextx = nextx.sibling;
+            }
+            x.sibling = prevx;
+            BinomialMinPQ<Key> H = new BinomialMinPQ<Key>();
+            H.head = x;
+            head = union(H).head;
+        }
+        return min.key;
+    }
+
+    public BinomialMinPQ<Key> union(BinomialMinPQ<Key> heap) {
+        if (heap == null) throw new IllegalArgumentException("Cannot merge a Binomial Heap with null");
+        this.head = merge(new Node(), this.head, heap.head).sibling;
+        Node x = this.head;
+        Node prevx = null, nextx = x.sibling;
+        while (nextx != null) {
+            if (x.order < nextx.order ||
+                (nextx.sibling != null && nextx.sibling.order == x.order)) {
+                prevx = x; x = nextx;
+            } else if (greater(nextx.key, x.key)) {
+                x.sibling = nextx.sibling;
+                link(nextx, x);
+            } else {
+                if (prevx == null) { this.head = nextx; }
+                else { prevx.sibling = nextx; }
+                link(x, nextx);
+                x = nextx;
+            }
+            nextx = x.sibling;
+        }
+        return this;
+    }
+
+    // Compares two keys
+    private boolean greater(Key n, Key m) {
+        if (n == null) return false;
+        if (m == null) return true;
+        return comp.compare(n, m) > 0;
+    }
+
+    // Assuming root1 holds a greater key than root2, root2 becomes the new root
+    private void link(Node root1, Node root2) {
+        root1.sibling = root2.child;
+        root2.child = root1;
+        root2.order++;
+    }
+
+    // Deletes and return the node containing the minimum key
+    private Node eraseMin() {
+        Node min = head;
+        Node previous = null;
+        Node current = head;
+
+        while (current.sibling != null) {
+            if (greater(min.key, current.sibling.key)) {
+                previous = current;
+                min = current.sibling;
+            }
+            current = current.sibling;
+        }
+        if (min == head) head = min.sibling;
+        else previous.sibling = min.sibling;
+
+        return min;
+    }
+
+    //Merges two root lists into one, there can be up to 2 Binomial Trees of same order
+    private Node merge(Node h, Node x, Node y) {
+        if (x == null && y == null) return h;
+        else if (x == null) h.sibling = merge(y, null, y.sibling);
+        else if (y == null) h.sibling = merge(x, x.sibling, null);
+        else if (x.order < y.order) h.sibling = merge(x, x.sibling, y);
+        else                        h.sibling = merge(y, x, y.sibling);
+        return h;
+    }
+
+    public Iterator<Key> iterator() {
+        return new MyIterator();
+    }
+
+    private class MyIterator implements Iterator<Key> {
+        BinomialMinPQ<Key> data;
+
+        // Constructor clones recursively the elements in the queue
+        // It takes linear time
+        public MyIterator() {
+            data = new BinomialMinPQ<Key>(comp);
+            data.head = clone(head, null);
+        }
+
+        private Node clone(Node x, Node parent) {
+            if (x == null) return null;
+            Node node = new Node();
+            node.key = x.key;
+            node.sibling = clone(x.sibling, parent);
+            node.child = clone(x.child, node);
+            return node;
+        }
+
+        public boolean hasNext() {
+            return !data.isEmpty();
+        }
+
+        public Key next() {
+            if (!hasNext()) throw new NoSuchElementException();
+            return data.delMin();
+        }
+
+        public void remove() {
+            throw new UnsupportedOperationException();
+        }
+    }
+
+    // default Comparator
+    private class MyComparator implements Comparator<Key> {
+        @Override
+        public int compare(Key key1, Key key2) {
+            return ((Comparable<Key>) key1).compareTo(key2);
+        }
+    }
+
+}
+```
+
+---
+
 # Aula 14/03
 
 ## Hash Table (HT)
@@ -547,6 +907,23 @@ Convenções sobre HTs:
 - não há chaves repetidas;
 - `null` nunca é usado como chave;
 - `null` nunca é usado como valor.
+
+API de uma HT:
+
+| Tipo | Chamda | Descrição |
+| --- | --- | --- |
+|  | HT() | cria uma HT |
+| void | put(Key key, Value val) | Insere (key, val) |
+| Value | get(Key key) | Busca o valor associado a Key |
+| void | delete(Key key) | remove o valor associado a chave |
+| int | rank(Key key) | Numeoro de keys menores que key |
+| boolean | isEmpty() | HT esta vazia? |
+| boolean | contains(Key key) | A key esta na HT? |
+| Iterable<Key> | keys() | Lista todas as chaves da HT |
+
+Consumo de tempo:
+- Durante a execução de get() ou put(), uma chave de HT é tocada quando comparada com key. Logo, o consumo de tempo é proporcional ao numero de chaves tocadas;
+- O custo medio de uma busca bem sucedida é o quociente `c/n`, onde c é a soma dos custos das buscas e n é o numero total de chaves na tabela.
 
 ```java
 public class ArrayST<Key, Value> {
@@ -571,7 +948,5 @@ public class ArrayST<Key, Value> {
             return vals[i];
         return null
     }
-
-
 }
 ```

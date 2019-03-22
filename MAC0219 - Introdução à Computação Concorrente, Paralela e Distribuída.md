@@ -62,7 +62,4 @@ Para facilitar as coisas, o IEEE definiu um padrão para o uso de threads no UNI
 
 Uma thread vai ser inicilizada como um ponteiro do tipo `pthread_t`
 
-> Terminar de estudar a partir da pagina 116 do livro   
-> Olhar: https://github.com/giulianobelinassi/critical-section/tree/master   
-> Olhar: https://github.com/MatheusBernardino/pi/blob/master/pi.c
 ---
