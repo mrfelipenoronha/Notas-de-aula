@@ -925,28 +925,134 @@ Consumo de tempo:
 - Durante a execução de get() ou put(), uma chave de HT é tocada quando comparada com key. Logo, o consumo de tempo é proporcional ao numero de chaves tocadas;
 - O custo medio de uma busca bem sucedida é o quociente `c/n`, onde c é a soma dos custos das buscas e n é o numero total de chaves na tabela.
 
+> Implementação usando lista ligada
+
+---
+# Aula 26/03
+
+## Self-organizing lists
+
+Metodos que reordena a lista, facilitando operações de consulta e inserção. Todas as ideias desse estilo utilizam a ideia de trazer os itens mais utilizados para a frente da lista ligada.
+
+### Move to front
+Ideia de mover um nó recem acessado para o inicio da lista. Mantendo os mais acessados no inicio da lista, o que diminui a complexidade.
+
+## Lista ligada ordenada
+As operações de get() ou set() são faceis de serem feitas numa lista ligada ordenada (LLO), porém, o que demora, é achar a posição em que elas devem ocorrer.   
+
+Para contornar esse problema, vamos usar duas listas ligadas. A L0 vai conter todos os elementos, a L1 vai conter só uma parte dos elementos da L0, vamos usar a L1 como uma forma rapida de percorrer a lista ligada, logo, a L1 vai ser uma distribuição de partes dos elementos da L0.
+
+> L0 -> 1 2 5 7 12 17 20 28 50 100 145 342 532   
+> L1 -> 1       12          50             532
+
+Logo, dessa maneira, o consumo de tempo sera <= |L1| + n/|L1|.
+Para isso, temos que o valor que minimiza a complexidade é |L1| = sqrt(n).
+
+Podemos generalizar e melhorar utilizando a ideia de raiz quadrada, atingindo resultados em lgN qundo melhoramos os niveis.
+
+**Fato**: Existem lgN niveis.
+**fato**: Em uma busca, visitamos no maximo 2 nós de cada nivel.
+**Conclusão**: Numero de comparação <= 2lgN.
+
 ```java
-public class ArrayST<Key, Value> {
-    private int CAP = 8;
-    private Key[] keys;
-    private Value[] values;
-    private int n;
+public class LlST<Key, Value> {
 
-    public ArrayST(){
-        this.(CAP);
-    }
+	// Estrutura da lista ligada com skip
+	private class node{
+		Key key;
+		Value val;
+		Node next;
 
-    public ArrayST(int CAP){
-        keys = (Key[]) new Object[cap];
-        values = (Value[]) new Object[cap];
+		public Node(Key key, Value val, int levels){
+			this.key = key;
+			this.val = val;
+			this.next = new Node[levels];
+		}
+	}
 
-    }
+	// Aplicação de sqrt
+	public class SkipListST {
 
-    public Value get(Key key){
-        int i = rank(key);
-        if (i < n && key.equals(keys[i]))
-            return vals[i];
-        return null
-    }
+		int MAX = 20; // Numero maximo de niveis
+		int lgn; // Numero de niveis
+
+		Node first;
+		int n;
+
+		public SkipListST() {
+			first = new Node(null, null, MAX);
+		}
+	}
+
+	public Value get(Key key) {
+
+		Node p = first;
+
+		// Loop para descer os niveis
+		for (int k = lgn-1, k >= 0; k--) {
+			p = rank(key, p, k);
+			Node q = p.next[k];
+			if (q != null && q.key.equals(key))
+				return q.val;
+		}
+
+		// Caso não tenha achado nada
+		return null;
+	}
+
+	private Node rank(Key key, Node start, int k) {
+
+		Node p = start;
+		Node q = p.next[k];
+
+		while (q != null && q.key.compareTo(key) < 0){
+			p = q;
+			q = q.next[k];
+		}
+
+		return p;
+	}
+
+	private void put(Key key, Value val) {
+
+		if (val == null){
+			delete(key);
+			return;
+		}
+
+		Node[] s = new Node[MAX];
+		Node p = first;
+		for (int k = lgn-1; k >= 0; k--){
+			p = rank(key, p, k);
+			Node q = p.next[k];
+			if (q != null && q.key.equals(key)){
+				q.val = val;
+				s[k] = p;
+				return;
+			}
+		}
+
+		int levels = randLevel();
+		Node novo = new Node(key, val, levels);
+
+		for (int k = levels-1; k >= 0; k--){
+			Node t = s[k].next[k];
+			s[k].next[k] = novo;
+			novo.next[k] = t;
+		}
+
+		n++;
+	}
+
+	private int radnLevel(){
+		int level = 0;
+		int r = StdRandom.uniform((1<<(31)));
+
+		while ()
+
+
+	}
+	
+	// Completar codigos depois
 }
 ```

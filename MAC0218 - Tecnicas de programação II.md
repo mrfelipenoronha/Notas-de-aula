@@ -349,3 +349,38 @@ Podemos tambem ter uma arquitetura p2p, em que um cliente se comunica com outro 
 - **TCP** é o 'transmission control protocol', que valida os IPs e controla as transmições e controla as chamadas. Pode possuir varias portas, fazendo possivel a comunicação com varios IPs e objetos diferentes.   
 - **DNS** é um sistema de mapeamento de um endereço (blalba.com) para um IP (x.x.x.xx).   
 - **HTTP** é um protoclo para a tranferencia de informação pela internet. Representa uma conversa entre o cliente e o servidor, enviando requisições e recebendo respostas.   
+
+---
+
+# Aula 26/03
+
+> Continuando a aula passada
+
+### Cookies
+Servidor usando a maquina para salvar coisas, deixando a conexão mais rapida. Porem, isso pode não ser seguro, uma vez que sites podem querer guardar arquivos maliciosos no computador do cliente.   
+O Ruby consegue lidar de uma forma muito inteligente e automatica com os cookies.
+
+### Arquitetura do Projeto
+1. No projeto, o cliete vai mandar uma requisição pela rede.
+2. O servidor vai receber essa requisição e manda-la para um controlador.
+3. O controlador vai ver qual função deve ser chamada.
+4. O modelo vai gerir os dados armazenados, pegar a função e executada, além de passar os dados para visualição.
+5. Na visualização vai ser mostrado para o cliente o que ocorreu.
+
+## Model-view controller
+Nome do tipo de arquitetura comentado anteriormente. Vale lembrar que o `controller` se comunica com o `view`, e vice-versa. O `view` tambem se comunica com o `model` e vice-versa, e, finalente, o `controller` se comunica com o `model`.
+
+### Exercicio invertido - Desing REST para um loja online de sucos
+- GET: Consulta dados
+- POST: Cria novo item
+- PUT: Atualizar
+- DELETE: Deleta item
+
+Configurando `routers.rb`:
+
+```Ruby
+get '/pastries/:flavor' => 'pastries#eat',
+    :as => 'eat_dessert'
+```
+
+> Olhar no PACA como construir ambiente rails localmente e ver os exemplos
