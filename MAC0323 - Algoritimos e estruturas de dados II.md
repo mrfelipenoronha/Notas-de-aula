@@ -221,7 +221,7 @@ public class UnionFind {
 
 		for (int i = 0; i < n; i++){
 			sz[i] = 1;
-			id[i] = 1;
+			id[i] = i;
 		}
 	}
 
@@ -955,13 +955,19 @@ Podemos generalizar e melhorar utilizando a ideia de raiz quadrada, atingindo re
 **Conclusão**: Numero de comparação <= 2lgN.
 
 ```java
-public class LlST<Key, Value> {
+public class SkipListST<Key, Value> {
+
+	int MAX = 20; // Numero maximo de niveis
+	int lgn; // Numero real de niveis
+
+	Node first; // Head da LL
+	int n; // Numero de elementos na lista
 
 	// Estrutura da lista ligada com skip
 	private class node{
 		Key key;
 		Value val;
-		Node next;
+		Node[] next;
 
 		public Node(Key key, Value val, int levels){
 			this.key = key;
@@ -970,18 +976,12 @@ public class LlST<Key, Value> {
 		}
 	}
 
-	// Aplicação de sqrt
-	public class SkipListST {
+	public SkipListST() {
+		first = new Node(null, null, MAX);
+	}
 
-		int MAX = 20; // Numero maximo de niveis
-		int lgn; // Numero de niveis
-
-		Node first;
-		int n;
-
-		public SkipListST() {
-			first = new Node(null, null, MAX);
-		}
+	public int size() {
+		return n;
 	}
 
 	public Value get(Key key) {
@@ -1027,9 +1027,9 @@ public class LlST<Key, Value> {
 			Node q = p.next[k];
 			if (q != null && q.key.equals(key)){
 				q.val = val;
-				s[k] = p;
 				return;
 			}
+			s[k] = p;
 		}
 
 		int levels = randLevel();
@@ -1044,15 +1044,255 @@ public class LlST<Key, Value> {
 		n++;
 	}
 
-	private int radnLevel(){
+	private int randLevel(){
+
 		int level = 0;
-		int r = StdRandom.uniform((1<<(31)));
+		int r = StdRandom.uniform((1<<(MAX-1)));
 
-		while ()
+		while ((r&1) == 1){
+			if (level == lgn){
+				if (lgn == MAX)
+					return MAX;
+				return lgn+1;
+			}
 
-
+			level++;
+			r >>= 1;
+		}
+		return level+1;
 	}
-	
-	// Completar codigos depois
+
+	public void delete(Key key) {
+
+		Node[] stop = new Node[MAX];
+		Node p = first;
+
+		for (int k = lgn-1; k >= 0; k--) {
+			p = rank(key, p, k);
+			stop[k] = p;
+		}
+
+		// Q aponta para o possivel no com o valor
+		Node q = stop[0].next[0];
+
+		// Se a chave nao esta na HT
+		if (q == null || q.key.equals(key))
+			return;
+
+		int levels = q.next.length;
+
+		for (int k = 0; k < levels; k++)
+			stop[k].next[k] = q.next[k];
+
+		for (int k = lgn-1; k >= 0 && first.next[k] == null; k--)
+			lgn--;
+
+		n--;
+	}
 }
+```
+
+---
+
+# Aula 28/03
+
+## Arvore binaria
+
+São estruturas com celular/nós, que possuem 3 capos:
+1. Conteudo;
+2. Filho esquedo;
+3. Filho direito;
+4. Pai.
+
+Da mesma forma, uma arvore binaria possui uma raiz.   
+A profundidade de um nó é a distancia dele ate a raiz.   
+A altura de uma arvore é a maior altura.
+
+## Maneiras de percorrer una BT
+
+- In-order traversal: **ERD**. Visita subarvore esquerda, visita raiz, visita subarvore direita.
+
+- Pre-order traversal: **RED**.
+
+- Pos-order traversal: **EDR**
+
+Para essas travessias, vamos criar um iterador para cada uma.
+
+Se a arvore for constituida de operadores numeros e possuir numeros nas folhas, temos duas possibilidades:
+1. Percorrer a arvore in-order vai nos devolver a expressão da forma comum (2 * (8 + 7) / 9);
+2. Percorrer a arvore pos-order vai nos devolver a notação posfixa, que é muito util para calculos usando pilhas e que são resolvidos de maneira linear.
+
+```java
+public class BT {
+
+	private Node r;
+
+	// Estrutura para cada nó da arvore
+	private class Node {
+
+		private Item item;
+		private Node left, right;
+		private Node parent;
+
+		public Node (Item item, Node left, Node right, Node parent){
+			this.item = item;
+			this,left = left;
+			this.right = right;
+			this.parent = parent;
+		}
+
+		// Vendo se um node é uma folha
+		public booelan isLeaf() {
+			return this.left == null && this.right == null;
+		}
+	}
+
+	// Metodo iterador para travessia in-order
+	public Iterable<Item> inOrder() {
+
+		Queue<Item> q = new Queue<Item>();
+		inOrder(r, q);
+		return q;
+	}
+
+	// Função que realiza a travessia in-order recursivamente
+	private void inOrder(Node r, Queue<Item> q) {
+
+		if (r != null) {
+			inOrder(r.left, q);
+			q.enqueue(r.item);
+			inOrder(r.right, q);
+		}
+	}
+
+	// Função que realiza a travessia in-order de forma iterativa
+	private void inOrderIterative(Node r, Queue<Item> q) {
+
+		// Pilha auxiliar dos nos percorridos
+		Stack<Node> s = new Stack<Node>();
+
+		while (r != null || !s.isEmpty()) {
+
+			// Tenho filho esquerdo, ou seja, tenho que visitar ele
+			if (r != null) {
+				s.push(r);
+				r = r.left;
+			}
+
+			// Tenha terminado uma subarvore esquerda, agora volto para uma raiz
+			else {
+				r = s.pop();
+				q.enqueue(r.item);
+				r = r.right;
+			}
+		}
+	}
+
+	// Retorna o sucessor in-order do node 'p', com 'p' != null
+	private Node sucessor(Node p) {
+
+		// A ideia é ir para direita e efundar, caso eu tenha filho direito
+		if (p.right != null) {
+			Node q = p.right;
+			while (q.left != null) q = q.left;
+			return q;
+		}
+
+		// Caso contrario, eu tenho que voltar para o pai esquerdo mais proximo
+		while (p.parent != null && p.parent.right == p)
+			p = p.parent;
+
+		return p.parent;
+	}
+
+	// Escreve a arvore de um jeito escroto
+	private static void writeBT(Node x) {
+
+		// Caso tenha chego em um no vazio
+		if (x == null) {
+			StdOut.print(1);
+			return;
+		}
+
+		// Printa 0 caso exista aquele nó
+		StdOut.print(0);
+		writeBT(x.left);
+		writeBT(x.right);
+	}
+
+	// Vai ler uma arvore do jeito escroto, devolvendo um no com a raiz dela
+	private static Node readBT() {
+
+		// Caso a leitura seja == 1
+		if (StdIn.reaInt())
+			return null;
+
+		// Criando novo nó, mas sem o parent
+		return new Node(666, readBT(), readBT(), null);
+
+		// Aparentemente isso é uma parada muito top e util
+	}
+
+	// Metodo iterador para travessia pre-order
+	public Iterable<Item> preOrder() {
+
+		Queue<Item> q = new Queue<Item>;
+		preOrder(r, q);
+		return q;
+	}
+
+	// Função que realiza a travessia pre-order
+	private void preOrder(Node r, Queue<Item> q) {
+
+		if (r != null) {
+			q.enqueue(r.item);
+			preOrder(r.left, q);
+			preOrder(r.right, q);
+		}
+	}
+
+	// Metodo iterador para travessia pos-order
+	public Iterable<Item> posOrder() {
+
+		Queue<Item> q = new Queue<Item>;
+		posOrder(r, q);
+		return q;
+	}
+
+	// Função que realiza a travessia pos-order
+	private void posOrder(Node r, Queue<Item> q) {
+
+		if (r != null) {
+			posOrder(r.left, q);
+			posOrder(r.right, q);
+			q.enqueue(r.item);
+		}
+	}
+}
+```
+
+## Doubling method
+
+Metodo para estimar o consumo de tempo de um determinado código.  
+**Hipotese**: O consumo de tempo do programa T(n) = a*(n^b).   
+**Consequencia**: Quando n cresce linearmente T(2n)/T(n) ~ 2^b. T(2n) = a(2n)² = 4an² = 4T(n).
+
+Esse metodo pode ser descrito da seguinte maneira:
+- Comece com um n moderado;
+- Meça e registe o consumo de tempo;
+- Dobre o valor de n;
+- Repita enquanto for possivel;
+- Verifique que a razão de tempos consecutivos se aproxima 2^b;
+- Prediga e extrapole.
+
+## Problema 3-sum
+Dados n numeros inteiros, quantos trios que soma 0?
+
+### Solução força bruta
+```Java
+for (int i = 0; i < n; i++)
+	for (int j = 0; j < n; j++)
+		for (int k = 0; k < k; k++)
+			if (a[i] + a[j] + a[k] == 0)
+				ans++;
 ```

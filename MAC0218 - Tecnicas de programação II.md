@@ -383,4 +383,31 @@ get '/pastries/:flavor' => 'pastries#eat',
     :as => 'eat_dessert'
 ```
 
-> Olhar no PACA como construir ambiente rails localmente e ver os exemplos
+---
+
+# Aula 28/03
+
+## HTML e Ruby
+
+Arquivos salvos com a extensão '.html.erb' são codigos em HTML que rodam partes de codigos em Ruby.
+Tais funções rodam atravez das tags `<%= ` e `%>`
+
+`rake db:create` : Cria um banco de dados
+`rail server` : Servidos de rais
+
+Uma rota vai ser algo que recebe a URL e a direciona para a aplicação correspondente.   
+Rodando `bin/rails g controller Manda index` no diretorio do projeto criar uma rota padrão.
+
+Todos os controladores ficam em `app/views/manda`, nessa pasta ficam os apelidos, caminhos e controlodares para cada metodo, no nosso caso, que o controlador chama manda, temos que acessar a subpasta manda.      
+`manda#index` se traduz como "No cotrolador manda vou chamar o metodo index"
+
+Criando um controlador 'apelidos':
+`bin/rails g controller Apelidos`
+
+A chamda de `resources :apelidos` no arquivo 'routes.rb' criar automaticamente os arquivos e rotas necessarias, com atribuições e funcões padroes, cabendo ao programador criar o metodo para cada uma no controller.   
+
+No arquivo 'apelidos_controller.rb' devem ser criado todos os metodos
+
+
+> Olhar no PACA como construir ambiente rails localmente e ver os exemplos   
+> Ver livro dessa parte
