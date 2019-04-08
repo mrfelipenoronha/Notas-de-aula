@@ -408,6 +408,16 @@ A chamda de `resources :apelidos` no arquivo 'routes.rb' criar automaticamente o
 
 No arquivo 'apelidos_controller.rb' devem ser criado todos os metodos
 
+---
+
+# Aula 02/04
+
+### Rail routes
+As rotas em rails são chamadas de funções atravez da URL. Ou seja, usando uma URL especifica vc pode chamar funções e metodos especificos dentro da aplicação.   
+
+Agora, vamos criar um botão/link para exluirmos um ID.
+
+# Aula 04/04
 
 > Olhar no PACA como construir ambiente rails localmente e ver os exemplos   
 > Ver livro dessa parte

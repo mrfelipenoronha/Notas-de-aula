@@ -1296,3 +1296,183 @@ for (int i = 0; i < n; i++)
 			if (a[i] + a[j] + a[k] == 0)
 				ans++;
 ```
+
+---
+
+# Aula 04/04
+
+## Arvores binarias de busca (BST)
+
+Arvore utilizada para representar uma tabela de simbolos. Ou seja, utiliza chaves, no esquema de uma arvore binaria.
+
+- Todas as chaves a esquerda de um no são menores que ele
+- Todas as chaves a direita de um no são maiores que ele
+- O numero de arvores que podem ser construidas a partir de um vetor ordenado com N numeros é: comb(2n n)(1/n+1)
+- O comprimento interno de uma BT é a soma das profundidades dos seus nos
+
+### Teoria da informação
+Não existe algoritmo que implemente get() e put() em tempo O(lg(lgn)).    
+Assim como, todo algoritmo de ordenação baseado em comparação, tem complexidade proporcional a O(n*logn) no pior caso.
+
+```java
+
+public class BST<Key extends.... Values> {
+
+	private Node r; // Raiz
+
+	private class Node {
+
+		Key key;
+		Value val
+
+		Node left, right;
+
+		// Contrutor do no
+		public Node(Key key, Value val) {
+			this.key = key;
+			this.val = val;
+		}
+	}
+
+	// Retorna o valor de um item com a chave key
+	public Value get(Key key) {
+
+		Node x = get(r, Key); // Chamando metodo privado recursivo
+		if (x == null)
+			return null;
+
+		return x.val;
+	}
+
+	// Acha uma chave de forma recursiva
+	private Value get(Node x, Key key) {
+
+		if (x == null)
+			return null;
+
+		int cmp = key.compareTo(x.key);
+
+		if (cmp < 0) // A chave é menor
+			return get(x.left, key);
+
+		if (cmp > 0) // A chave é maior
+			return get(x.right, key);
+
+		// Achei o no correto
+		return x;
+	}
+
+	// Dado um valor val, insere na arvore
+	public void put(Key key, Value val) {
+
+		r = put (r, key, val);
+	}
+
+	// Metodo privado para a inserção
+	private Node put(Node x, Key key, Value val) {
+
+		// Criando um novo no para a arvore
+		if (x == null)
+			return new Node(key, val);
+
+		int cmp = key.compareTo(x.key);
+
+		// Descendo na arvore
+		if (cmp < 0)
+			x.left = put(x.left, key, val);
+
+		else if (cmp < 0)
+			x.right = put(x.right, key, val);
+
+		// Caso eu esteja na chave, logo, altero o valor
+		else
+			x.val = val;
+
+		return x;
+	}
+
+	// Retorna o valor da menor chave
+	public Value min() {
+
+		if (r == null)
+			return null;
+
+		return min(r).val;
+	}  
+
+	private Node min(Node x){
+
+		if (x == null)
+			return null;
+
+		if (x.left == null)
+			return x;
+
+		return min(x).left;
+	}
+
+	// Deleta o elemento com chave minima
+	public void deleteMin() {
+
+		if (r == null)
+			return;
+
+		r = deleteMin(r);
+	}
+
+	private Node deleteMin(Node x) {
+
+		if (x == null)
+			return null;
+
+		if (x.left == null)
+			return x.right;
+
+		x.left = deleteMin(x.left);
+		return x;
+	}
+
+	// Deleta uma dada chave da arvore
+	public void delete(Key key) {
+
+		if (r == null)
+			return null;
+
+		r = delete(r, key);
+	}
+
+	private Node delete(Node x, Key key) {
+
+		if (x == null) return null;
+
+		int cmp = key.compareTo(x.key);
+
+		if (cmp < 0)
+		 	x.left = delete(x.left, key);
+
+		else if (cmp > 0)
+			x.right = delete(x.right, key);
+
+		// Chego no no que quero deletar
+		else {
+
+			// X nao tem algum dos filhos
+			if (x.right == null) return x.left;
+			if (x.left == null) return x.right;
+
+			// Caso ele tenha os dois filhos
+			Node t = x;
+			// Achando o menor valor a direita
+			x = min(t.right);
+			// Reatribuindo conexão
+			x.right = deleteMin(t.right);
+			// Subarvore esquerda antiga
+			x.left = t.left;
+		}
+
+		// Retornando novo no
+		return x;
+	}
+}
+
+```
