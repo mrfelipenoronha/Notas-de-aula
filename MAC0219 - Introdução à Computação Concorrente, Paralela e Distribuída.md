@@ -1,3 +1,11 @@
+# Bibliografia usada
+
+- Ben-Ari - Principles of Concurrent and Distributed Programming
+
+- Andrews - Foundations of Multithreaded, Parallel, and Distributed Programming
+
+---
+
 # Aula 12/03
 
 - Interrupção: quando o processador coloca um processo como prioritario, pausando a execução de outros. Elas são extremamente rapidas.
@@ -349,7 +357,7 @@ Tal implementação é garantida de ser atomica em nivel de hardware.
 Podemos substituir o <await...> por `while(TS(lock)) sleep`. Porem, tal medida pode sobrecarregar o cache. A sução é fazer:
 ```
 while (lock) sleep
-while (TS(lock))    
+while (TS(dlock))    
     while (lock)
         sleep
 ```
@@ -371,3 +379,64 @@ CSenter # Protocoloto de entrada
 CSexit # Protocolo de saida
 ```
 ---
+
+# Aula 09/04
+
+Algoritmos de sessão critica um pouco mais sofisticados
+
+## Picket Algorithm
+Ideia: cada processo pega um ticket para saber sua vez de usar a sessão critica.
+
+Para isso, preciso de variveis compartilhadas:
+1.  `number` - Usado para atribuir tickets aos processos, começa com 1.
+2.  `next` - Qual é o processo que tem q ser executado agota, começa com 1.
+3.  `turn[]` - Inicializado com zeros, fala qual o *ticket* do meu processo
+
+Para entrar na sessão critica o processo CSi faz primeiro `turn[i] = number; number++`.
+O processo CSi então espera ate que next seja igual ao seu numero para entrar na SC ao sair incrementa o next.
+
+```
+int number = 1, next = 1, turn[1:n] = ([n]0)
+process CS [i = 1 to n]
+    while (true)
+        < turn[i] = number, number++ >  // Fetch and add
+        while (turn[i] != next) sleep
+        sessão_critica()
+        next++
+        sessão_não_critica()
+```
+
+### Instrução FETCH-AND-ADD
+Intrução implementada a nivel de hardware que realiza a operação de forma atomica.
+
+```
+FA (var, icr)
+    <int tmp = var, var += icr, return tmp>
+```
+
+Logo, podemos substituir `< turn[i] = number, number++ >` para `turn[i] = FA(number, 1)`
+
+## The Bakery Algorithm
+
+**Objetivo:** aprensetar um algoritmo que não precisa de instruções especiais.    
+**Ideia:** Os processos verificam entre si que é o proximo.
+
+```
+int turn[1:n] = ([n]0)  // Inicializando com 0
+process CS[i=1 to n]
+    while ()
+        < turn[i] = max(turn[1:n]) + 1 >
+        
+        for [j = 1 to n such that j != i]
+
+            // Enquanto existirem processos que querem usar a sessão critica que
+            // Chegaram antes do meu
+            while (turn[j] == 0 or turn[i] < turn[j])
+                sleep
+
+        sessão_critica()
+
+        turn[i] = 0     // Falando que não quero mais usar sessão_critica
+
+        sessão_não_critica()
+```

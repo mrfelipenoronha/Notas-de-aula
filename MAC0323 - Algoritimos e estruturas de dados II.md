@@ -1,3 +1,8 @@
+# Bibliografia
+
+- Algorithms IV in java - Sedgewick
+---
+
 # Aula 21/02 - Introdução
 
 Nesta materia vamos usar Java e a biblioteca 'princeton.algs4' do livro Algorithms IV do Robert Sedgewick.
@@ -1474,5 +1479,94 @@ public class BST<Key extends.... Values> {
 		return x;
 	}
 }
+
+```
+
+---
+
+# Aula 09/04
+
+## Arvores binarias de busca ótima
+Quando voce consegue otimizar a relação entre profundidade de um no e a sua probabilidade de ser a resposta, ou seja, minimizar o numero de operações ate chegar naquele nó, levando em conta a probabilidade dele de ser escolhido.
+
+Chamaremos `p[]` a probabilidade de uma chave ser buscada.   
+Chamaremos `prf[]` a profundidade de um dado no.
+
+queremos minimiazar a expressão:
+
+`p[0](prf[0]+1) + p[1](prf[1]+1) + ... + p[n-1](prf[n-1]+1)`
+
+### **Como achar a arvore otima?**
+
+Usaremos a propriedade de que toda subarvore de uma arvore otima é otima.   
+A ideia é criar um algoritmo de divide and conquer, que começa a montar a arvore de baixo pra cima, sempre deixando o no com maior probabilidade como raiz.
+
+## Arvores 2-3 / B-tree
+
+São arvores perfeitamente balanceadas. Ou seja, todos os links para NULL estão no mesmo nivel.
+
+Nesta arvore podemos ter nos *normais* e nos duplos. Um no duplo possui as seguintes propriedades:
+1. Ele tem dois números, x e y.
+2. Sua subarvore esquerda tem numeros menores que X.
+3. Sua subarvore direita tem numeros maiores que Y.
+4. Existe uma subarvore central, que possui numeros entre x e y.
+
+Fato: se h é a altura da arvore, entaõ (2^(h+1))-1 <= n <= ((3^(h+1))-1), onde n é o numero de nos.
+Logo, h <= log2(n+1)
+
+Operação de inserção: a ideia é sempre colocar o no embaixo, criando espaço para ele caber e manter a propriedade da arvore. Podemos fazer isso tranfromando um no normal para um no duplo ou *espatifando* um no duplo em uma *mini-arvore*, fazedno com que a raiz dessa subarvore tente entrar em algum lugar.
+
+A implementação dessa arvore se apoia na implementação da arvore binarias.
+
+## BST rubro-negra / Red-black tree
+
+Uma BST rubro negra é uma BST com links que sao negros ou rubros.
+
+- Links **rubros** são links esquerdos.
+- Nenhum no é incidente a dois links rubros.
+- balanceamento negro perfeito: todo caminho da raiz ate um link null tem o mesmo numero de links negros.
+
+```java
+
+// 'defines' em Java
+private static final boolean RED = true;
+private static final boolean BLACK = false;
+
+private class Node {
+	Key key;
+	Value val;
+	Node left, right;
+	int n;
+	boolean cor;
+
+	Node(Key key, Value val){
+		this.key = key;
+		this.val = val;
+	}
+}
+
+public Value get(Key key) {
+
+	Node x = get(r. key);
+	if (x == null)
+		return null;
+
+	return x.val;
+}
+
+// Implementação igual ao da arvore binaria		
+private Node get(Node x, Key key) {
+
+	if (x == null)
+		return null;
+
+	int cmp = key.compareTo(x.key);
+
+	if (cmp < 0) return get(x.left, key);
+	if (cmp > 0) return get(x.right, key);
+	return x;
+}
+
+
 
 ```
