@@ -417,7 +417,29 @@ As rotas em rails são chamadas de funções atravez da URL. Ou seja, usando uma
 
 Agora, vamos criar um botão/link para exluirmos um ID.
 
-# Aula 04/04
+---
 
-> Olhar no PACA como construir ambiente rails localmente e ver os exemplos   
-> Ver livro dessa parte
+# Aula 11/04
+
+## Vamos cadastrar usuarios
+
+- Usando a gema `Devise` para controlar todas as iterações de login e usuario
+- Da para utilizar `rails s` para inicializarmos o servidor
+- Alteramos o gemfile para adicionar 'devise' e 'erb2haml'
+- Agora vamos instalar o 'devise' na aplicação, arquivos necessarios para usarmos ele, usamos `rails g devise:install`
+- Inserimeos a linha `config.action_mailer.default_url_options = { host: 'localhost', port: 3000 }` em config/enviroment/development
+- Caso o projeto estivesse em produção, teriamos que alterar o host
+- Garantimos que existe uma rota para a pagina inicial, garantindo que existe uma pagina inicial que vai ir para o devise
+- Geramos os views atravez de `rails g devise:views`
+- Rodando `rake haml:replace_erbs` conbertemos todos os arquivos erbs para haml (rake é como se fosse o make do ruby)
+- `rails g devise user` geramos, atravez da gema devise, uma tabela de usuarios para o banco
+- Utilizamos `rake db:migrate` para *setarmos* as mudanças feitas no banco
+- Agora vamos fazer a autenticação do usuario, garantindo que eles esta logado entre as sessões, para isso, fazemos mudanças no controlador, mais especificamente `application_controler.rb`
+- Fazemos alterações nos locales para adicionar tradução
+- Algora vamos implementar um email de autenticação. Para isso, vamos colocar um cliente de email adicionar, a gema `mailcatcher`
+- Criamos um novo campo na tabela de usuario do banco de dados usando `rails g migration add_confirmable_to_devise`
+- As migrações nos permitem uma especie de controle de versão no banco de dados
+
+
+> Refazer a parte do completando CRUD, no PACA
+> Refazer parte de avisos e alarmes da ultima aula

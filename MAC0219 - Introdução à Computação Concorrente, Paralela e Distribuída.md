@@ -426,7 +426,7 @@ int turn[1:n] = ([n]0)  // Inicializando com 0
 process CS[i=1 to n]
     while ()
         < turn[i] = max(turn[1:n]) + 1 >
-        
+
         for [j = 1 to n such that j != i]
 
             // Enquanto existirem processos que querem usar a sessão critica que
@@ -440,3 +440,34 @@ process CS[i=1 to n]
 
         sessão_não_critica()
 ```
+
+---
+
+# Aula 11/04
+
+## OpenMP
+
+O OpenMP é uma especificação que vai implementar o multthreading. Vai usar certas ferramentas de acordo com o copilador e o SO. Por exemplo, ao usar OpenMP copilado no GCC e rodando no linux, o pragma vai fazer uma implementação do PThreads muito mais otimizada.
+
+Procurar **OpenMP cheatsheet** para ver todas as coisas da especificação.
+
+- `#pragma omp parallel for`: uma anotação que reliza um tipo de metaprogramação no codigo.
+- Com `num_threads(2)` a gente pode especificar o numero de threads que vamos usar.
+- `#pragma omp critical(NOME_DA_SC) {}`: reliza uma sessão critica com o codigo entre parenteses.
+- Para compilar usando o OpenMP, é preciso usar a flag `-fopenmp`.
+- Quando eu executo meu programa com mais threads doq meu computador possui isso é chamado 'green-threads', que são uma especie de pseudothreads.
+- Uma operação de redução é quando reunimos o resultado de operações de varias threads em torno de um resultado unico e final. No caso do codigo abaixo, o `acc += ` não vai adicionar diretamente na variavel acc definida anteriomente, e sim e variaveis criadas pelo openmp que vão ser depois unidas, em uma forma de divide and conquer.
+
+```
+double acc = 0.0;
+
+#pragma omp parallel for private(i) reduction(+:acc)
+for (i = 0; i < n; i++){
+    double x = (i*2)/2;
+    acc += sqrt(1 - (x*x)) * i;
+}
+
+return acc;
+```
+
+No codigo acima, o openmp dividiu o trabalho em partes iguais, e não em partes dinamicas. Ou seja, um processo pode terminar antes de outros, dividindo de forma dinamica, a divisão de trabalho não é feita de forma igual e os trabalhos podem ter diferentes tamanhos.

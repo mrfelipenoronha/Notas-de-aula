@@ -1526,6 +1526,14 @@ Uma BST rubro negra é uma BST com links que sao negros ou rubros.
 - Nenhum no é incidente a dois links rubros.
 - balanceamento negro perfeito: todo caminho da raiz ate um link null tem o mesmo numero de links negros.
 
+---
+
+# Aula 11/04
+
+## Continuação arvores 2-3 e Rubro-negras...
+
+
+
 ```java
 
 // 'defines' em Java
@@ -1567,6 +1575,77 @@ private Node get(Node x, Key key) {
 	return x;
 }
 
+Private boolean isRed(Node x) {
+	if (x == null) return false;
+	return x.color == RED;
+}
 
+private void rotateLeft(Node h) {
+
+	Node x = h.right;
+	h.right = x.left;
+	x.left = h;
+	x.color = h.color;
+	h.color = RED;
+	x.n = h.n;
+	h.n = 1 + size(h.left) + size(h.right);
+	return x;
+}
+
+private void rotateRight(Node h) {
+
+	Node x = h.left;
+	h.left = x.right;
+	x.right = h;
+	x.color = h.color;
+	h.color = RED;
+	x.n = h.n;
+	h.n = 1 + size(h.left) + size(h.right);
+	return x;
+}
+
+private void flipColor(Node h) {
+	h.color = !h.color;
+	h.left.color = !h.left.color;
+	h.right.color = !h.right.color;
+}
+
+private Node balance(Node h) {
+	if (isRed(h.right) && !isRed(h.left))
+		h = rotateLeft(h);
+
+	if (isRed(h.left) && isRed(h.left.left))
+		h = rotateRight(h);
+
+	if (isRed(h.left) && isRed(h.right))
+		flipColor(h);
+
+	return h;
+}
+
+public void put(Key key, Value val) {
+	r = put(r, key, val);
+	r.color = BLACK;
+}
+
+private Node put(Node h, Key key, Value val) {
+
+	if (h == null)
+		return new Node(key, val, 1, RED);
+
+	int cmp = Key.compareTo(h.key);
+
+	if (cmp < 0)
+		h.left = put(h.left, key, val);
+
+	else if (cmp > 0)
+		h.right = put(h.right, key, val);
+
+	else 	
+		h.val = val;
+
+	h = balance(h);
+	return h;
+}
 
 ```
