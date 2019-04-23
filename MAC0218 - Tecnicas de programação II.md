@@ -440,6 +440,48 @@ Agora, vamos criar um botão/link para exluirmos um ID.
 - Criamos um novo campo na tabela de usuario do banco de dados usando `rails g migration add_confirmable_to_devise`
 - As migrações nos permitem uma especie de controle de versão no banco de dados
 
+---
 
-> Refazer a parte do completando CRUD, no PACA
-> Refazer parte de avisos e alarmes da ultima aula
+# Aula 23/04
+
+## Metodologia AGIL
+
+- Pessoas e iterações valem mais do que processos e Ferramentas
+- Software funcional vale mais do que documentação extensa
+- Colaboração com o cliente vale mais do que negociação de contrato
+- Respostas a mudanças vale mais do que seguir um plano
+
+São definidos 12 principios, são eles:
+
+1. Nossa maior prioridade é satisfazer o cliente para a entrega continua e rapida de software valioso
+2. Mudanças sao sempre bem vindas, mesmo na parte final do densenvolvimento
+3. Entregar software funcional frequentemente, favorecendo intervalos curtos
+4. Negociantes e desenvolvedores devem trabalhar juntos durante o projeto
+5. O projeto deve ser feito com individuos motivados
+6. A melhor forma de comunicação é face a face
+7. Software funcional é a maior medida de progresso
+8. O ritmo de desenvolvimento deve ser constante
+9. Atenção continua á excelencia tecnica e bom Projeto
+10. Simplicidade é essencial
+11. As melhores arquiteturas surgem de times auto-organizados
+12. Reflexões e ajustes devem ocorrer em intervalos regulares
+
+### Scrum
+
+Um framework, um conjunto de diretrizes indicando como construir um projeto baseado no manifesto agil. A base do Scrum é o ciclo de desenvolvimento chamado **sprint**, que dura entre 2 semanas e 1 mes. Cada sprint é composto pelas seguintes tarefas:
+
+- Planejamento: é uma reunião onde se decide o que sera feiot no restante do ciclo
+- Reunião diaria: é bem curta, sincroniza o trabalho e estabele metas do dia
+- Desenvolvimento: Quebrando em tarefas diarias
+- Revisão: reunião ao final do sprint
+- Retrospectiva: é uma reunião entre sprints para definir melhorias e ajustes de procedimentos
+
+### Backlog
+As tarefas são mantidas em uma lista, TODO_LIST.
+
+### Papeis
+Existem 3 papeis fundamentais no scrum, são eles:
+
+- ScrumMaster: é quem mantem o andamento o processo, organizando as reuniões e as atividades
+- Product owner: é quem gerencia o Backlog e é responsavel por deixar as tarefas bem claras
+- Team: contem todos os especialistas necessarios

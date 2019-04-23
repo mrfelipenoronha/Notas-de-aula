@@ -1532,8 +1532,6 @@ Uma BST rubro negra é uma BST com links que sao negros ou rubros.
 
 ## Continuação arvores 2-3 e Rubro-negras...
 
-
-
 ```java
 
 // 'defines' em Java
@@ -1649,3 +1647,50 @@ private Node put(Node h, Key key, Value val) {
 }
 
 ```
+
+----
+
+# Aula 23/04
+
+## Hash Table
+
+Aqui, temos uma implementação simples de uma tabela de simbolos:
+
+```Java
+
+public class DirectAddressST<Value> {
+
+	private Value[] vals;
+
+	public DirectAddressST(int n){
+		vals = (Value[]) new Object(n);
+	}
+
+	public Value get(Key key){
+		return vals[key];
+	}
+
+	public void put(Key key, Value val){
+		vals[key] = val;
+	}
+
+	public void delete(Key key){
+		vals[key] = null;
+	}
+}
+
+```
+
+Agora, queremos fazer uma hashtable generica que realiza as funções get(), put() e delete() tem tempo medio O(1).
+Para isso, usamos uma função de hashing.
+
+```Java
+
+private int hash(String key){
+	int h = 0;
+	for (int i = 0; i < key.length(); i++)
+		h = (31*h + key.charAt(i))%mod;
+}
+```
+
+> Completar arvore rubro negra com notas de aula

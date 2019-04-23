@@ -471,3 +471,25 @@ return acc;
 ```
 
 No codigo acima, o openmp dividiu o trabalho em partes iguais, e não em partes dinamicas. Ou seja, um processo pode terminar antes de outros, dividindo de forma dinamica, a divisão de trabalho não é feita de forma igual e os trabalhos podem ter diferentes tamanhos.
+
+---
+
+# Aula 23/04
+
+## CUDA
+
+Uma GPU é uma unidade de processamento com um numero muito grande de threads, porem, tem um clock mais lento do que uma CPU normal. Logo, uma GPU se torna ideal para o processamento paralelo, pois ela pode realizar milhões de calculos em paralelo.
+
+**CUDA** é uma extensão de C/C++, com APIs e extensões especificas para o processamento usando placas da nvidia.     
+Por definição, quando fazendo coisas em CUDA, chamamos a CPU de host e a gpu de device.
+
+A ideia é que um codigo seja executado tanto na CPU quanto na GPU. Com a parte sequencial no host e a parte paralela no device. Na seguinte ordem:
+- Copiar os dados da memoria da cpu para a memoria da gpu
+- Executar o codigo copiado na gpu
+- Copiar os dados da memoria da gpu para a memoria da cpu
+
+`nvcc` é o copilador usado, com a extensão `.cu`.
+
+Existem identificadores para mostrar onde as coisas vão ser executadas. São eles `__global__`, `__host__` e `__device__`. Onde a `__global__` diz que tal função vai ser chamada do host e executada no device.
+
+> Olhar slides
