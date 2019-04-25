@@ -485,3 +485,16 @@ Existem 3 papeis fundamentais no scrum, são eles:
 - ScrumMaster: é quem mantem o andamento o processo, organizando as reuniões e as atividades
 - Product owner: é quem gerencia o Backlog e é responsavel por deixar as tarefas bem claras
 - Team: contem todos os especialistas necessarios
+
+
+---
+
+# Aula 25/04
+
+Nessa aula, vamos criar um novo projeto, focando no DB
+
+Criando novo projeto:   
+
+    rails new adrastea -T
+
+> Completar com coisas de aula

@@ -1693,4 +1693,73 @@ private int hash(String key){
 }
 ```
 
-> Completar arvore rubro negra com notas de aula
+---
+
+# Aula 25/04
+
+# Separating chaining
+Tecnica utilizada para evitar colisões, diminuindo/condansando a HT, em cada celula da HT temos uma symble table move to front.
+
+## Fator de carga / Load factor
+
+- **Alpha = n/m**
+
+É a relação de elementos em cada posição da HT, ou seja, o numero de elemetos em cada ST. Precisamos definir um alpha que seja bom para nos, caso ele aumente mais do que queremos, aumentamos a HT.
+
+Desse modo, na HT, temos que as operações possuiem complexidade media de O(alpha+1).
+
+```java
+public SepChainHashST<Key, Value> {
+	int m; // Tamanho da tabela / posições
+	int n; // Numero de chaves
+
+	ST<Key, Value>[] st;
+
+	public SepChainHashST() {
+
+		this.(997);
+	}
+
+	public SepChainHashST(int m) {
+
+		this.m = m;
+		st = (ST[]) new ST[m];
+		for (int i = 0; i < m; i++)
+			st[i] = new ST<Key, Value>[]; // Tabela de simbolo em cada posicao
+	}
+
+	private int hash(Key key) {
+		// O java tem um metodo hashCode em todo objeto, que devolve um inteiro entre [-2³¹, 2³²]
+		return (key.hashCode()&0x7fffffff)%m; // Deixando o numero positivo e pegando o modulo
+	}
+
+	public Value get(Key key) {
+
+		int h = hash(key);
+		return st[h].get(key);
+	}
+
+	public void put(Key key, Value val) {
+
+		if (n >= 10*m) resize(2*m); // Vendo o load factor, que neste caso é 10
+		int h = hash(key);
+		if (!st[h].contains(key)) n++;
+		st[h].put(key, val);
+	}
+
+	private void resize(int C) {
+		SepChainHashST<Key, Value> t;
+		t = new SepChainHashST<Key, Value>(C);
+		for (int i = 0; i < m; i++)
+			for (Key key : st[i])
+				t.put(key, st[i].get(key)); // Populando nova HT
+
+		this.m = C;
+		this.st = t.st;
+	}
+}
+
+```
+
+
+> Completar arvore rubro negra com notas de aula/livro

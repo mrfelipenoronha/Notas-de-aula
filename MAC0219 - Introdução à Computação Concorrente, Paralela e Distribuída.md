@@ -492,4 +492,4 @@ A ideia é que um codigo seja executado tanto na CPU quanto na GPU. Com a parte 
 
 Existem identificadores para mostrar onde as coisas vão ser executadas. São eles `__global__`, `__host__` e `__device__`. Onde a `__global__` diz que tal função vai ser chamada do host e executada no device.
 
-> Olhar slides
+> Olhar slides da aula de cuda dos monitores
