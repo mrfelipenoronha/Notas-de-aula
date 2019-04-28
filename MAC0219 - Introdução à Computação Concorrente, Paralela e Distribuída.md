@@ -492,4 +492,96 @@ A ideia é que um codigo seja executado tanto na CPU quanto na GPU. Com a parte 
 
 Existem identificadores para mostrar onde as coisas vão ser executadas. São eles `__global__`, `__host__` e `__device__`. Onde a `__global__` diz que tal função vai ser chamada do host e executada no device.
 
-> Olhar slides da aula de cuda dos monitores
+```c++
+__global__ void kernel(void){
+
+}
+
+int main(void) {
+    kernel<<<1, 1>>>();
+    printf("Oi\n");
+    return 0;
+}
+```
+
+Aqui chamamos de kernel(), uma função chamada pelo host e executada pelo device.
+
+Uma simples função para adicionar dois inteiros no device tem a seguinte forma:
+
+
+```C++
+
+__global__ void add(int *a, int *b, int *c) {
+    *c = *a + *b;
+}
+
+```
+
+Porém, é importante ressaltar que, como a função vai ser executada no devide, os ponteiros para *a, b e c* devem apontar para posições de memoria no device. Em cuda, temos funções similares para tais coisas, como: `cudaMalloc()`, `cudaFree()` e `cudaMemcpy()`.
+
+Assim, temos o seguinte codigo:
+
+```c++
+
+int main(void) {
+    int a, b, c; // host copies of a, b, c
+    int *d_a, *d_b, *d_c; // device copies of a, b, c
+    int size = sizeof(int);
+
+    // Allocate space for device copies of a, b, c
+    cudaMalloc((void **)&d_a, size);
+    cudaMalloc((void **)&d_b, size);
+    cudaMalloc((void **)&d_c, size);
+
+    // Setup input values
+    a = 2;
+    b = 7;
+
+    // Copy inputs to device
+    cudaMemcpy(d_a, &a, size, cudaMemcpyHostToDevice);
+    cudaMemcpy(d_b, &b, size, cudaMemcpyHostToDevice);
+
+    // Launch add() kernel on GPU
+    add<<<1,1>>>(d_a, d_b, d_c);
+
+    // Copy result back to host
+    cudaMemcpy(&c, d_c, size, cudaMemcpyDeviceToHost);
+
+    // Cleanup
+    cudaFree(d_a); cudaFree(d_b); cudaFree(d_c);
+    return 0;
+}
+```
+
+### Rodando em paralelo
+
+Se executarmos `add<<< N, 1 >>>();`, estaremos executando add() N vezes. Cada chamada de add() em paralelo é chamado de bloco. Podemos acessar o index de um bloco com `blockIdx.x`.
+
+Dessa forma, podemos realizar a soma de duas arrays, em paralelo, com a seguinte função:
+
+```c++
+__global__ void add(int *a, int *b, int *c) {
+    c[blockIdx.x] = a[blockIdx.x] + b[blockIdx.x];
+}
+```
+
+### Cuda Threads
+
+Um bloco pode ser divido em threads paralelas. Assim, chamando `add<<< N, M >>>();`, ira executar N blocos, com M threads cada. O id de cada thread pode ser acessado com `threadIdx.x`.
+
+Assim, para somarmos duas matrizes, utilizando essas duas coisas, temos que acessar suas posições de forma linear e unica, logo, fazemos:
+
+```c++
+__global__ void add(int *a, int *b, int *c) {
+    int index = threadIdx.x + blockIdx.x * blockDim.x;
+    c[index] = a[index] + b[index];
+}
+```
+
+A chamada `void __syncthreads();` faz com que todas threads de um bloco sejam sincronizada em uma barreira.
+
+Podemos criar uma variavel em uma memoria compartilhada, seguindo o exemplo de `__shared__ int teste`.
+
+`cudaDeviceSynchronize()` bloqueia a CPU ate que toda as chamadas em CUDA sejam finalizadas.
+
+[vistar este site para mais info](developer.nvidia.com/cuda)
