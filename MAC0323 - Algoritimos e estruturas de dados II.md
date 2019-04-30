@@ -1761,5 +1761,133 @@ public SepChainHashST<Key, Value> {
 
 ```
 
+---
+
+# Aula 30/04
+
+## Hipotese de hashing uniforme
+
+- Ideia: função de hashing deve parecer aleatoria, ou seja, a probabilidade de uma chave ser escolhida é de 1/m.
+
+Na media, as listas da tabela de simbolo tem n/m chaves.
+
+### Consumo de tempo
+
+- Busca malsucedida, na media o consumo de tempo é O(1 + n/m)
+- Busca bem sucessida, na meida, o consumo é o(1 + n/m)
+
+Como n/m == alpha, temos uma complexidade constante.
+
+## Open adressing (OA)
+
+Ideia de inserir N chaves em uma HT de tamanho M > N, confiando em espaços vazios na HT para evitar colisões.
+
+### Linear probing
+Maneira mais simples de realizar OA. Quando existe uma colisão eu simplesmente procuro a proxima posição vazia na HS. Aqui, temos as seguintes possibilidades:
+
+- Chave igual a chave de procura: search hit
+- Posição vazia, null na posição index - search miss
+- Chave diferente da chave procurada - tento proxima entrada
+
+Dessa maneira, fico pesquisando ate que alguma das duas primeiras possibilidades aconteça.
+
+```Java
+
+public class linHashST<Key, Value> {
+	int n;
+	int m;
+	Key[] keys;
+	Value[] vals;
+
+	public linHashST() {
+		this.(100); // Capacidade inicial
+	}
+
+	public linHashST(int cap) {
+		m = cap;
+		keys = (Key[]) new Object[m];
+		vals = (Value[]) new Object[m];
+	}
+
+	public Value get(Key ket) {
+		for (int h = hash(key); key[h] != null; h = (h+1)%m)
+			if (keys[h].equals(key))
+				return val[h];
+		return null;
+	}
+
+	public void put(Key key, Val val) {
+
+		// Asserting for open adressing
+		if (n >= m/2)
+			resize(2*m);
+
+		int h = hash(key);
+		// Checkignif already is in HT
+		for (; keys[h] != null; h = (h+1)%m)
+			if (keys[h].equals[key]) {
+				vals[h] = val;
+				return;
+			}
+
+		// Assigning new pos
+		this.keys[h] = key;
+		this.vals[h] = val;
+		this.n++;
+	}
+
+	private void resize(int cap) {
+
+		linHashST<Key, Value> t;
+		t = new linHashST(cap);
+
+		for (int h = 0; h < m; h++)
+			if (keys[h] != null)
+				t.put(keys[h], vals[h]);
+
+		this.keys = t.keys;
+		this.vals = t.vals;
+		this.m = t.m;
+	}
+
+	public void delete(Key key) {
+
+		if (!contais(key))
+			return;
+
+		int h = hash(key);
+		// Finding boi
+		while (!key.equal(key[h]))
+			h = (h+1)%m;
+
+		// Deleting value
+		keys[h] = null;
+		vals[h] = null;
+
+		// Aqui, definimos a politica de realizar o rehash() de todo mundo
+		// que vem depois dele, todo mundo no cluster dele.
+		h = (h+1)%m;
+		while (keys[h] != null) {
+			keysT = keys[h];
+			valsT = vals[h];
+			keys[h] = null;
+			vals[h] = null;
+			n--;
+			put(keysT, valsT);
+			h = (h+1)%m;
+		}
+	}
+}
+
+```
+
+#### complexidade
+
+- Busca bem-sucedida: O(1/2(1 + ( 1/(1-alpha) )))
+- Busca mak-sucedida: O(1/2(1 + ( 1/(1-alpha)^2 )))
+
+### Quadratic probing
+
+### Double hashing
 
 > Completar arvore rubro negra com notas de aula/livro

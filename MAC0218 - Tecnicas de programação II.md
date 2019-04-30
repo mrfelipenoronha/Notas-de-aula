@@ -489,12 +489,47 @@ Existem 3 papeis fundamentais no scrum, são eles:
 
 ---
 
-# Aula 25/04
+# Aula 30/04
 
-Nessa aula, vamos criar um novo projeto, focando no DB
+## Testes automatizados
 
-Criando novo projeto:   
+Em desenvolvimento agil testes são essenciais e devem ser feitos a cada modificação.
 
-    rails new adrastea -T
+Aplicações SaaS (software as a service) possuem um caminho de dados bem definido:
 
-> Completar com coisas de aula
+1. usuario
+2. interface
+3. controladores
+4. modelos
+5. banco de dados
+
+Existem 3 niveis basicos de testes:
+
+1. Unidade: Testes unitarios, testa se cada elemento (classe, função, etc) da sua aplicação funciona.
+2. Controladores: Teste de todas as funções que atuam sobre o banco de dados.
+3. Aceitação: Teste final e checa se o resultado esta de acordo com o definido.
+
+## RSpec
+
+Define uma linguagem de dominio especifico (DSL) para descrever diferentes cenarios e qual o comportamento esperado em cada um deles.
+
+Um teste é dividido em 4 partes:
+
+1. Preparação (setup): define o contexto do teste. Por exemplo, definindo variaveis e instanciando objetos.
+2. Exercicio (exercise): descrição da operação a ser testada
+3. Verificação (Verify): comparação com o resultado esperado
+4. Limpeza (teardown): retorno ao estado anterior
+
+Cada teste possui uma cor>
+
+- Amarelo: Falta implementar
+- Vermelho: Falha, corrija o codigo
+- Verde: Sucesso
+
+## FactoryBot (Girl)
+
+Implementa o padrao factory para construir novos objetos sempre que necessario. Seus principais metodos são:
+
+- `build`: Cria um objeto sem salva-lo no banco de dados
+- `build_stubbed`: Criar um objeto sem salva-lo no banco, mas ele se comporta como se estivesse no banco.
+- `create`: Cria um objeto realmente salvo no banco
