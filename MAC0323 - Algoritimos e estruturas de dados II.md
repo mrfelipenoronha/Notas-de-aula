@@ -1890,4 +1890,171 @@ public class linHashST<Key, Value> {
 
 ### Double hashing
 
-> Completar arvore rubro negra com notas de aula/livro
+---
+
+# Aula 02/05
+
+## Tries
+
+Tabela de simbolos especilizada em chaves que são estrings, as chaves ficam armazenadas como caminhos em uma arvore, fazendo um nó auxiliar para armazenar a informação desejada.
+
+Definimos que um alfabeto tem **R** caracteres.
+
+```Java
+
+class True<Value> {
+
+	Node r; // Root
+	int n; // Number of keys
+
+	class Node {
+		Value val;
+		Node[] next = new Node[R];
+	}
+
+	public Value get (String key) {
+		Node x = get(r, key, 0);
+		if (x == null) return null;
+		return x.val;
+	}
+
+	private Node get (Node x, String key, int i) {
+		if (x == null) return null;
+		if (i == key.lenght()) return x;
+		char c = key.charAt(i);
+		return get(x.next[c]), key, i+1);
+	}
+
+	public void put (String key, Value val) {
+		r = put(r, key, val, 0);
+	}
+
+	private void put (Node x, String key, Value val, int i) {
+		if (x == null)
+			x = new Node();
+
+		if (i == key,length()) {
+			if (x.val == null) n++;
+			v.val = val;
+			return;
+		}
+
+		char c = key.charAt(i);
+		x.next[c] = put(x.next[c], key, val, i+1);
+		return x;
+	}
+
+	public void delete (String key) {
+		r = delete(r, key, 0);
+	}
+
+	private void delete (Node x, String key, int i) {
+		if (x == null) return null;
+		if (i == key.length()) x.val = null;
+		else {
+			char c = key.charAt(i);
+			x.next[c] = delete(x.next[c], key, i+1);
+		}
+
+		// Cleaning
+		if (x.val != null) return x;
+		for (char c = 0; c < r; c++)
+			if (x.next[c] != null)
+				return x;
+
+		return null;
+	}
+
+	public Iterable<String> keysWithPrefix(String pre) {
+		Queue<String> q = new Queue<String> ();
+
+		Node x = get(r, pre, 0);
+		collect(x, pre, q);
+		return q;
+	}
+
+	private void colect (Node x, String pre, Queue<String> q) {
+		if (x == null) return;
+		if (x.val != null)
+			q.enqueue(pre);
+
+		for (char c = 0; c < r; c++)
+			collect (x.next[c], pre+c, 1);
+	}
+
+	public Iterable<String> Keys() {
+		return keysWithPrefix("");
+	}
+
+	public String longestPrefixOf(String s) {
+		int max = -1;
+		Node x = r;
+
+		for (int d = 0; x != null; d++) {
+			if (x.val != null) max = d;
+			if (d == s.length()) break;
+			x = x.next[s.charAt(d)];
+		}
+
+		if (max == -1)
+			return null;
+
+		return s.substring(0, max);
+	}
+
+	public Iterable<String> keyThatMatch (String pat) {
+		Queue<String> q = new Queue<String>;
+		collect(r, "", pat, q);
+		return q;
+	}
+
+	private void collect (Node x, String pre, String pat, Queue<> q) {
+		if (x == null) return;
+		if (pre.length() == pat.length() && x.val != null)
+		 	q.enque(pre);
+		if (pre.length() == pat.length())
+			return;
+
+		char c_next = pat.charAt(pre.length());
+		for (int c = 0; c < r; c++)
+			if (c_next != '.' || c_next == c)
+				collect(x.next[c], pre+c, pat, q);
+
+	}
+}
+
+```
+
+---
+
+# Aula 07/05
+
+## Data compression
+
+Reprensenta um arquivo grande em um arquivo pequeno, de maneira lossless.
+
+**Taxa de compressao**: (#Bits apos compressao)/(#Bits antes da compressao)
+
+**Fato**: nenhum algoritmo pode garantir taza de compressão estritamente menor que 1 para todo e qualquer fluxo de bits.
+
+Vamos escrever um exemplo que comprime os dados de para um sequencia de DNA
+
+```Java
+public static void copress() {
+
+	Alphabet DNA = new Alphabet("ACGT"); // Like a hash table
+
+	int w = DNA.lgR();
+	String s = BinaryStdIn.readString();
+	int n = s.length();
+
+	BinaryStdOut.write(n);
+
+	for (int i = 0; i < n; i++) {
+		int d = DNA.toIndex(s.charAt(i));
+		BinaryStdOut.write(d, w);
+	}
+
+	BinaryStdOut.close();
+}
+```

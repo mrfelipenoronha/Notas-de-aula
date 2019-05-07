@@ -520,7 +520,7 @@ Um teste é dividido em 4 partes:
 3. Verificação (Verify): comparação com o resultado esperado
 4. Limpeza (teardown): retorno ao estado anterior
 
-Cada teste possui uma cor>
+Cada teste possui uma cor:
 
 - Amarelo: Falta implementar
 - Vermelho: Falha, corrija o codigo
@@ -533,3 +533,11 @@ Implementa o padrao factory para construir novos objetos sempre que necessario. 
 - `build`: Cria um objeto sem salva-lo no banco de dados
 - `build_stubbed`: Criar um objeto sem salva-lo no banco, mas ele se comporta como se estivesse no banco.
 - `create`: Cria um objeto realmente salvo no banco
+
+---
+
+# Aula 07/05
+
+## Recap
+
+- Na pasta 'factories' da pasta '.spec' definimimos todas as construções de objetos que serao usados para teste
