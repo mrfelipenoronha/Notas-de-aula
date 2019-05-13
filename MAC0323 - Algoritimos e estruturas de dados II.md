@@ -2058,3 +2058,164 @@ public static void copress() {
 	BinaryStdOut.close();
 }
 ```
+
+---
+
+# Aula 09/05
+
+## Algoritmo de Huffman
+
+Transform bytes (8 bits) em codigos. Chamaremos de R o numero de bytes diferentes, tranformando cada byte em um codigo menor, que utiliza menos bits.
+
+Para isso, usamos uma tabela de simbolos, criando uma especie de dicionario para os codigos.
+
+**Ideia do algoritimo**: Usar codigos curtos (com menos bits) para os caracteres (bytes) que aparecem com mais frequencia. Deixando o codigo mais longo para os bytes mais raros.
+
+Precisamos tambem, construir uma tabela st[], que armazena a conversão dos bytes em codigos. Tal tabela **precisa ser livre de prefixos** para que a decodificação seja unica para cada cadeia codificada. A tabela inversa, que armazena a conversão dos codigos em bytes, vai ser um trie bianria.
+
+**Proposição**: O algoritmo de Huffman é o mais FODA dentre todos os algoritimos com tabelas libres de prefixos.
+
+
+```java
+
+
+// Nó para a Trie
+Node implements Comparable<Node> {
+	char ch;
+	int freq;
+	Node left, right;
+
+	Node (char ch, int freq, Node left, Node right) {
+		this.ch = ch;
+		this.freq = freq;
+		this.left = left;
+		this.right = right;
+	}
+
+	boolean isLeaf() {
+		return (this.left == null && this.right == null);
+	}
+
+	int compareTo (Node that) {
+		return this.freq - that.freq;
+	}
+}
+
+// Construindo trie (bits (codigo) -> byte (caractere))
+Node buildTrie(int[] freq) {
+	MinPQ<Node> pq new MinPQ<Node>();
+
+	// Construindo folhas da trie
+	for (char c= 0; c < r; c++)
+		if (freq[c] > 0)
+			pq.insert(new Node(c, freq[c], null, null) );
+
+	// Agregando folhas
+	while (pq.size() > 1) {
+		Node x = pq.delMin();
+		Node y = pq.delMin();
+
+		Node parent = new Node ('\0', x.freq+y.freq, x, y);
+		pq.insert(parent);
+	}
+
+	return pq.delMin();
+}
+
+// Constroi st[] (Byte (caractere) -> bits (codigo))
+String[] buildCode (Node root) {
+	String st[] = new String[r];
+	buildCode(st, root, "");
+	return st;
+}
+
+void buildCode(String[] st, Node x, Strins s) {
+
+	if (x.isLeaf) {
+		st[x.ch] = s;
+		return;
+	}
+
+	buildCode(st, x.left, s+0);
+	buildCode(st, x.right, s+1);
+}
+
+// Printando trie na saida
+void writeTrie(Node x) {
+	if (x.isLeaf()) {
+		BSO.write(true);
+		BSO.write(x.ch);
+		return;
+	}
+
+	BSO.write(false);
+	writeTrie(x.left);
+	writeTrie(x.right);
+}
+
+Node readTrie() {
+
+	if (BSI.readBoolean()) {
+		char c = BSI.readChar();
+		return new Node (c, 0, null, null);
+	}
+
+	return new Node ('\0', 0, readTrie(), readTrie());
+}
+
+void compress() {
+
+	String s = BinaryStdIn.readString(); // Binario (01010101101010)
+	char input = s.toCharArray(); // Caracteres - ASCI extendido (A,B,*,!,..)
+
+	int[] freq = new int[r];
+	for (int i = 0; i < input; i++)
+		freq[input[i]]++;
+
+	Node root = buildTrie(freq); // Criando a trie
+	String[] st = buildCode(root); // Criando ST
+	writeTrie(root); // Escrevendo a trie na saida
+
+	BinaryStdOut.write(input.length);
+
+	// Percorrendo todos os bytes
+	for (int i = 0; i < input.lenght; i++) {
+
+		String code = st[input[i]]; // Posição correspondente ao caractere
+
+		// Escrevendo o codigo na saida
+		for (int j = 0; j < code.lenth(); j++) {
+
+			if (code.charAt(j) == '0')
+				BinaryStdOut.write(false);
+			else
+				BinaryStdOut.write(true);
+		}
+	}
+}
+
+void expand () {
+
+	Node root = readTrie();
+	int n = BinaryStdIn.readInt(); // Quantidade de codigos comprimidos
+
+	for (int i = 0; i < n; i++) {
+
+		Node x = root; // Inicializando com raiz da trie
+
+		// Enquanto estou lendo codigo novo e ele nao acabou
+		while (!x.isLeaf) {
+			if (BinaryStdIn.readBoolean())
+				x = x.right;
+			else
+				x = x.left;
+		}
+
+		// Escrevendo o byte correspondente ao codigo lido
+		BinaryStdOut.write(x.ch);
+	}
+
+	BinaryStdOut.close();
+}
+
+```

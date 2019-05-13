@@ -702,3 +702,31 @@ process Coordinator
         for [i = 1 to n]
             continue[i] = 1
 ```
+
+---
+
+# Aula 09/05
+
+Podemos fazer uma melhoria no algoritmo da aula anterior. Fazendo uma *arvore de processos* em que cada processos espera dois filhos, então, quando os dois tiverem terminado, este processo avisa ao seu pai que terminou. Nessa recursão, temos que todos os processos foram terminados quando o processo *raiz* termina.
+
+Para isso, podemos definir a arvore de processos como se fosse um heap, usando os indices de heap para definir a responsabilidade de cada no.
+
+## Barreiras simetricas
+
+Funciona entre pares de processadores. Um (i) verifica se o outro (j) terminou.
+
+```
+{
+    < await (arrive[i] == 0) >
+    arrive[i] = 1   
+    < await (arrive[j] == 1) >
+    arrive[j] = 0
+}
+
+{
+    < await (arrive[j] == 0) >
+    arrive[j] = 1
+    < await (arrive[i] == 1) >
+    arrive[i] = 0    
+}
+```
