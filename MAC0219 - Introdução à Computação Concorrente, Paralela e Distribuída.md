@@ -730,3 +730,13 @@ Funciona entre pares de processadores. Um (i) verifica se o outro (j) terminou.
     arrive[i] = 0    
 }
 ```
+
+---
+
+# Aula 14/05
+
+## Modelos para a computação paralela
+
+Não existe um modelo universal para computação paralela, devido a sua complexidade e numeros possiveis de aplicações.
+
+**Escalonamento**: Divisão de recursos disponiveis entre processos. No caso de computadores, para cada tarefa, definir uma maquina e um tempo de inicio.

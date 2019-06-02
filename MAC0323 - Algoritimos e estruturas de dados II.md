@@ -2219,3 +2219,29 @@ void expand () {
 }
 
 ```
+---
+
+# Aula 16/05
+
+## Algoritmo de Lempel, Zif & Welch
+
+LZW é um metodo de dicionarios, onde o codigo tem tamanho fixo e strings sao de tamanho variado.
+
+```Java
+
+public static void compress() {
+
+	string input = BinaryStdIn.readString();
+	TST<Integer> st = new TST<Integer>();
+	for (int i = 0; i < R; i++) 	
+		st.put("" + (char)i, i);
+
+	int code = R+1;
+
+	while (input.length() > 0) {
+		string s = st.longestPrefixOf(input);
+	}
+
+}
+
+```
