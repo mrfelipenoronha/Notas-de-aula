@@ -740,3 +740,11 @@ Funciona entre pares de processadores. Um (i) verifica se o outro (j) terminou.
 Não existe um modelo universal para computação paralela, devido a sua complexidade e numeros possiveis de aplicações.
 
 **Escalonamento**: Divisão de recursos disponiveis entre processos. No caso de computadores, para cada tarefa, definir uma maquina e um tempo de inicio.
+
+---
+
+# Aula 04/06
+
+## MPI - Message passing interface
+
+Interface para multiprocessing entre varias maquinas. Para installar, basta `sudo apt install openmpi-bin`, para usar em um certo programa execute `mpiexec -np <NUM_PROCS> <PROGRAM>`.

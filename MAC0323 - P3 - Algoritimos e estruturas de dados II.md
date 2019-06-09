@@ -83,6 +83,8 @@ public class Digraph {
 
 - Complexidade O(V + E)
 
+```Java
+
 ```java
 
 public class DFSpaths{
@@ -153,3 +155,153 @@ public class BFSpaths{
 }
 
 ```
+---
+
+# Aula 03/06
+
+## Cortes
+
+Um corte é uma bipartição do conjunto de vertices. Um arco pertence/atravessa um corte (S,T) se tiver uma ponta em S e outra em T.
+Um corte é u, *st-corte* se s esta em S e t esta em T.
+
+Para demonstrarmos que **não existe** um caminho de s a t basta exibirmos um st-corte em que todo arco no corte tem ponta inicial em T e ponta final em S.
+
+## Arcos de arborescencia
+
+São os arcos v-w que a dfs() percorre para visitar w pela primeira vez.
+Conjunto de arborescências é a floresta da busca em profundidade
+
+## Arcos de retorno
+
+v-w é arco de retorno se w é ancestral de v.
+
+## Arcos descendente
+
+v-w é descendente se w é descendente de v, mas não é filho.
+
+## Ciclos
+
+---
+
+# Aula 06/06
+
+## Problema
+
+Dado `G` e `s` determine a distancia de `s` aos demais vertices do digrafo. Nesta solução, fazemos com que a distancia entre quaisquer dois vertices é 1.
+
+Guaradamos em um vetor `edgeTo[]` para podermos reconstruir a arvore de caminho de caminho minimo.
+
+```java
+
+public class BFSpaths {
+
+	int INF; // Definindo um infinto
+	int s;
+	int[] distTo;
+	int[] edgeTo; // Para conseguirmos reproduzir o caminho depois
+
+	public BFSpaths (Digraph G, int s) {
+		INF = G.V();
+		distTo = new int[G.V()];
+		edgeTo = new int[G.v()];
+		this.s = s;
+		for (int v = 0; v < G.V(); v++)
+			distTo[v] = INF;
+		bfs(G, s);
+	}
+
+	private void bfs(Digraph G, int s) {
+
+		// BFS padrão
+		Queue<Integer> q = new Queue<>();
+		q.enqueue(s);
+
+		while (!q.isEmpty()) {
+
+			int v = q.dequeue();
+			for (int w : G.adj(v)) {
+
+				int d = dist[v] + 1;
+				// Caso ainda não tenha sido setada
+				if (distTo[w] == INF) {
+					edgeTo[w] = v;
+					distTo[w] = d;
+					q.enqueue(w);
+				}
+			}
+		}
+	}
+}
+
+```
+
+Para isso, vale O(V + E).
+
+## Dijkstra
+
+Aqui, vamos tratar um caso mais geral, quando as distancias entre vertices podem assumir qualquer valor não negativo.
+
+Para isso, usamos a mesma ideia do caso acima, porem, a ordem que visitamos os vertices muda. Fazemos com que o proximo vertice visitado seja o vertice mais proximo (menor distancia) da origem que ainda não foi visitado, ou seja, propagamos as visitas na forma de uma *shockwave*.
+
+```java
+
+public class DijkstraPaths {
+
+	double INF;
+	int s;
+	double[] distTo;
+	arc[] edgeTo; // Para conseguirmos reproduzir o caminho depois
+
+	public Dijkstra (EWDigraph G, int s) {
+
+		INF = Double.Positivy_INFINITY;
+		distTo = new double[G.V()];
+		edgeTo = new arc[G.v()];
+		this.s = s;
+		for (int v = 0; v < G.V(); v++)
+			distTo[v] = INF;
+		distTo[s] = 0;
+		dijkstra(G, s);
+	}
+
+	private void dijkstra(EWDigraph G, int s) {
+
+		// Fila de prioridade com o index (peso) sendo os custo ate um
+		// vertice e o valor associado sendo o vertice em si
+		IndexMinPQ<Double> pq = new IndexMinPQ<>();
+		pq.insert(s, distTo[s])
+
+		while (!q.isEmpty()) {
+
+			int v = q.dequeue();
+			for (arc e : G.adj(v)) {
+
+				int w = e.to();
+				int d = dist[v] + e.weight();
+				// Caso ainda não tenha sido setada
+				if (distTo[w] > d) {
+					edgeTo[w] = e;
+					distTo[w] = d;
+
+					if (pq.contains(w))
+						pq.decreaseKey(w, d);
+
+					else
+						pq.insert(w, d);
+				}
+			}
+		}
+	}
+}
+
+```
+
+A complexidade do algoritmo do algoritmo de dijkstra é de O(E * logV)
+
+## Menor caminho em um DAG
+
+Em um DAG (direct acyclic graph) podemos achar o caminho minimo usando a ordenação topologica. Ademais, podemos ter arestas com pesos negativos.
+
+Para isso, percorremos o grafo na ordem que a ordação topologica definiu, com isso, eu consigo definir todas as menores distancias entre o vertice atual e os filhos.
+
+---
