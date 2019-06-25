@@ -748,3 +748,11 @@ Não existe um modelo universal para computação paralela, devido a sua complex
 ## MPI - Message passing interface
 
 Interface para multiprocessing entre varias maquinas. Para installar, basta `sudo apt install openmpi-bin`, para usar em um certo programa execute `mpiexec -np <NUM_PROCS> <PROGRAM>`.
+
+---
+
+# Aula 11/06
+
+## Escalonamento
+
+Um escalonamento é uma alocação, no tempo, de tarefas e recursos, considerando um criterio de otimização.
