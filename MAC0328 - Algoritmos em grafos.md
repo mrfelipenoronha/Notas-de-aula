@@ -1,4 +1,38 @@
----
+
+# Indice
+
+<!-- TOC depthFrom:2 depthTo:6 withLinks:1 updateOnSave:1 orderedList:0 -->
+
+- [Fontes de referencia para a matéria](#fontes-de-referencia-para-a-matria)
+- [Definições básicas sobre grafos](#definies-bsicas-sobre-grafos)
+	- [Arcos anti-paralelos e paralelos](#arcos-anti-paralelos-e-paralelos)
+	- [Leques e grau dos vertices](#leques-e-grau-dos-vertices)
+	- [Numero de arcos](#numero-de-arcos)
+	- [Subgrafos](#subgrafos)
+	- [Grafos não-dirigidos](#grafos-no-dirigidos)
+- [Estrutura de dados para um grafo](#estrutura-de-dados-para-um-grafo)
+	- [Matriz de adjacencia](#matriz-de-adjacencia)
+	- [Vetor de listas de adjacencia](#vetor-de-listas-de-adjacencia)
+- [Grafos aleatorios](#grafos-aleatorios)
+	- [Construtor 1](#construtor-1)
+	- [Construtor 2](#construtor-2)
+- [Caminhos e ciclos em grafos](#caminhos-e-ciclos-em-grafos)
+	- [Caminhos](#caminhos)
+	- [Ciclos](#ciclos)
+- [Grafos topologicos](#grafos-topologicos)
+	- [Definição](#definio)
+	- [Propriedades](#propriedades)
+	- [Variante antitopologica](#variante-antitopologica)
+- [Florestas radicadas](#florestas-radicadas)
+	- [Propriedades](#propriedades)
+	- [Terminologia](#terminologia)
+	- [Árvores radicadas](#rvores-radicadas)
+	- [Grafos bipartidos dirigidos](#grafos-bipartidos-dirigidos)
+- [Busca em profundidade (DFS)](#busca-em-profundidade-dfs)
+	- [Desempenho da busca DFS](#desempenho-da-busca-dfs)
+	- [Pré-ordem](#pr-ordem)
+
+<!-- /TOC -->
 
 # Aula 02/08
 
@@ -440,11 +474,9 @@ for (vertex v = 0; v < G->V; ++v)
     vv[pre[v]] = v;
 for (int i = 0; i < G->V; ++i)
     printf( "%d ", vv[i]);
-```\
+```
 
 Resumindo, dizemos que qualquer implementação do algoritmo de busca em profundidade descobre os vértices do grafo em pré-ordem.
-
-
 
 
 
