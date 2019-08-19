@@ -1,48 +1,53 @@
 
 # Indice
 
-<!-- TOC depthFrom:2 depthTo:6 withLinks:1 updateOnSave:1 orderedList:0 -->
+<!-- MDTOC maxdepth:6 firsth1:1 numbering:0 flatten:0 bullets:1 updateOnSave:1 -->
 
-- [Fontes de referencia para a matéria](#fontes-de-referencia-para-a-matria)
-- [Definições básicas sobre grafos](#definies-bsicas-sobre-grafos)
-	- [Arcos anti-paralelos e paralelos](#arcos-anti-paralelos-e-paralelos)
-	- [Leques e grau dos vertices](#leques-e-grau-dos-vertices)
-	- [Numero de arcos](#numero-de-arcos)
-	- [Subgrafos](#subgrafos)
-	- [Grafos não-dirigidos](#grafos-no-dirigidos)
-- [Estrutura de dados para um grafo](#estrutura-de-dados-para-um-grafo)
-	- [Matriz de adjacencia](#matriz-de-adjacencia)
-	- [Vetor de listas de adjacencia](#vetor-de-listas-de-adjacencia)
-- [Grafos aleatorios](#grafos-aleatorios)
-	- [Construtor 1](#construtor-1)
-	- [Construtor 2](#construtor-2)
-- [Caminhos e ciclos em grafos](#caminhos-e-ciclos-em-grafos)
-	- [Caminhos](#caminhos)
-	- [Ciclos](#ciclos)
-- [Grafos topologicos](#grafos-topologicos)
-	- [Definição](#definio)
-	- [Propriedades](#propriedades)
-	- [Variante antitopologica](#variante-antitopologica)
-- [Florestas radicadas](#florestas-radicadas)
-	- [Propriedades](#propriedades)
-	- [Terminologia](#terminologia)
-	- [Árvores radicadas](#rvores-radicadas)
-	- [Grafos bipartidos dirigidos](#grafos-bipartidos-dirigidos)
-- [Busca em profundidade (DFS)](#busca-em-profundidade-dfs)
-	- [Desempenho da busca DFS](#desempenho-da-busca-dfs)
-	- [Pré-ordem](#pr-ordem)
+- [Indice](#indice)   
+- [Fontes de referencia para a matéria](#fontes-de-referencia-para-a-matéria)   
+- [Definições básicas sobre grafos](#definições-básicas-sobre-grafos)   
+   - [Arcos anti-paralelos e paralelos](#arcos-anti-paralelos-e-paralelos)   
+   - [Leques e grau dos vertices](#leques-e-grau-dos-vertices)   
+   - [Numero de arcos](#numero-de-arcos)   
+   - [Subgrafos](#subgrafos)   
+   - [Grafos não-dirigidos](#grafos-não-dirigidos)   
+- [Estrutura de dados para um grafo](#estrutura-de-dados-para-um-grafo)   
+   - [Matriz de adjacencia](#matriz-de-adjacencia)   
+   - [Vetor de listas de adjacencia](#vetor-de-listas-de-adjacencia)   
+- [Grafos aleatorios](#grafos-aleatorios)   
+   - [Construtor 1](#construtor-1)   
+   - [Construtor 2](#construtor-2)   
+- [Caminhos e ciclos em grafos](#caminhos-e-ciclos-em-grafos)   
+   - [Caminhos](#caminhos)   
+   - [Ciclos](#ciclos)   
+- [Grafos topologicos](#grafos-topologicos)   
+   - [Definição](#definição)   
+   - [Propriedades](#propriedades)   
+   - [Variante antitopologica](#variante-antitopologica)   
+- [Florestas radicadas](#florestas-radicadas)   
+   - [Propriedades](#propriedades)   
+   - [Terminologia](#terminologia)   
+   - [Árvores radicadas](#árvores-radicadas)   
+   - [Grafos bipartidos dirigidos](#grafos-bipartidos-dirigidos)   
+- [Busca em profundidade (DFS)](#busca-em-profundidade-dfs)   
+   - [Desempenho da busca DFS](#desempenho-da-busca-dfs)   
+   - [Pré-ordem](#pré-ordem)   
+   - [Florestas de busca](#florestas-de-busca)   
+      - [Acima, abaixo, à esquerda e à direita](#acima-abaixo-à-esquerda-e-à-direita)   
+   - [Arcos de retorno, de avanço, e cruzados](#arcos-de-retorno-de-avanço-e-cruzados)   
+   - [Numeração pos-ordem](#numeração-pos-ordem)   
+      - [Intervalos de vida](#intervalos-de-vida)   
+   - [Ancestrais, descendentes, e primos](#ancestrais-descendentes-e-primos)   
 
-<!-- /TOC -->
+<!-- /MDTOC -->
 
-# Aula 02/08
-
-## Fontes de referencia para a matéria
+# Fontes de referencia para a matéria
 
 - ["R. Sedgewick, Algorithms in C (part 5: Graph Algorithms)"](http://www.informit.com/store/algorithms-in-c-part-5-graph-algorithms-9780201316636)
 
 - ["P. Feofiloff, Algoritmos para Grafos em C (via Sedgewick)"](https://www.ime.usp.br/~pf/algoritmos_para_grafos/)
 
-## Definições básicas sobre grafos
+# Definições básicas sobre grafos
 
 Um  grafo é um par de conjuntos:  um conjunto de coisas conhecidas como vértices e um conjunto de coisas conhecidas como arcos. Cada arco é um par ordenado de vértices. O primeiro vértice do par é a ponta inicial do arco e o segundo é a ponta final.
 
@@ -56,13 +61,13 @@ Uma boa maneira de definir um grafo é exibir seu conjunto de arcos, como por ex
 
     0-5 0-6 2-0 2-3 3-6 3-10
 
-### Arcos anti-paralelos e paralelos
+## Arcos anti-paralelos e paralelos
 
 Dois arcos são anti-paralelos se um é V-W e o outro é W-V, para isso, damos o nome de **arco** (edge).
 
 Dois arcos são paralelos (repetido) se a ponta inicial e final de um forem as mesmas do outro. Os grafos que lidaremos nesta materia não terão arcos paralelos.
 
-### Leques e grau dos vertices
+## Leques e grau dos vertices
 
 O **leque de saída** (fan-out) de um vértice num grafo é o conjunto de todos os arcos que saem do vértice.  O **leque de entrada** (fan-in) de um vértice é o conjunto de todos os arcos que entram no vértice.
 
@@ -72,7 +77,7 @@ Uma **fonte** (source) é um vértice que tem grau de entrada nulo. Um **sorvedo
 
 Um vértice é **isolado** se seu grau de entrada e seu grau de saída são ambos nulos.  É claro que um grafo sem vértices isolados é completamente definido por seu conjunto de arcos.
 
-### Numero de arcos
+## Numero de arcos
 
 A soma dos graus de saída de todos os vértices de um grafo é igual ao número de arcos do grafo.  A soma dos graus de entrada de todos os vértices também é igual ao número de arcos. Segue daí que um grafo com V vértices tem no máximo
 
@@ -82,7 +87,7 @@ arcos.
 
 Um grafo é  **completo**  se todo par ordenado de vértices distintos é um arco. Um grafo completo com V vértices tem exatamente V*(V−1) arcos. Um **torneio** é qualquer grafo dotado da seguinte propriedade: para cada par V-W de vértices distintos, V-W é um arco ou W-V é um arco, mas não ambos. Um torneio com V vértices tem exatamente ½V(V−1) arcos.
 
-### Subgrafos
+## Subgrafos
 
 Um subgrafo de um grafo G é um pedaço de G. O conjunto de vértices e o conjunto de arcos do pedaço de G devem ser coerentes. Assim, é melhor formular o conceito como uma relação entre dois grafos: Um grafo H é subgrafo de um grafo G se todo vértice de H é vértice de G e todo arco de H é arco de G. (Notação:  H ⊆ G.)
 
@@ -94,7 +99,7 @@ Alguns tipos de subgrafos merecem destaque. Um subgrafo H de um grafo G é
 
 Um **supergrafo** é o contrário de um subgrafo: um grafo G é supergrafo de um grafo H se H for subgrafo de G.
 
-### Grafos não-dirigidos
+## Grafos não-dirigidos
 
 Um grafo é não-dirigido (undirected) se cada um de seus arcos é antiparalelo a algum outro arco: para cada arco  v-w,  o grafo também tem o arco  w-v.
 
@@ -103,7 +108,7 @@ Num grafo não-dirigido, a relação de adjacência é simétrica:  um vértice 
 Num grafo não-dirigido, o leque de um vértice v é o conjunto de arestas que incidem em v. O grau de v é o número de arestas no leque de v. É claro que o grau de um vértice é igual ao seu grau de entrada e também ao seu grau de saída.
 
 
-## Estrutura de dados para um grafo
+# Estrutura de dados para um grafo
 
 Como representar um grafo na linguagem C?
 
@@ -117,7 +122,7 @@ Os vertices dos nossos grafos serão representados por inteiros, para isso, fare
 
 Para representar os arcos demos dois metodos:
 
-### Matriz de adjacencia
+## Matriz de adjacencia
 
 É um matriz de 0's e 1's, com as colunas e linhas idexadas pelos vertices.
 
@@ -206,7 +211,7 @@ void GRAPHshow( Graph G) {
 ```
 O espaço ocupado por uma matriz de adjacências é proporcional a V², sendo V o número de vértices do grafo.
 
-### Vetor de listas de adjacencia
+## Vetor de listas de adjacencia
 
 O vetor de listas de adjacência de um grafo tem uma lista encadeada (linked list) associada com cada vértice do grafo.  A lista associada com um vértice v contém todos os vizinhos de v.  Portanto, a lista do vértice v representa o leque de saída de v.
 
@@ -269,11 +274,8 @@ void GRAPHinsertArc( Graph G, vertex v, vertex w) {
 }
 
 ```
----
 
-# Aula 05/08
-
-## Grafos aleatorios
+# Grafos aleatorios
 
 Para escolher um vertice aleatoriamente usamos o envolucro a seguir, que devolve um numero entre 0 e V-1:
 
@@ -287,7 +289,7 @@ vertex randV( Graph G) {
 }
 ```
 
-### Construtor 1
+## Construtor 1
 
 A primeira função para construir um grafo aleatorios é a:
 
@@ -306,7 +308,7 @@ Graph GRAPHrand1( int V, int A) {
 
 A função acima só deve ser invocada quando o numero A é bem menor que V*(V-1). Devido ao fato de ela tentar inserir um arco aleatório toda vez, caso o grafo gerado seja denso, vai demorar muito ate que todos os arcos possiveis sejam inseridos.
 
-### Construtor 2
+## Construtor 2
 
 A segunda função para construir o grafo é dada a seguir:
 
@@ -325,9 +327,9 @@ Graph GRAPHrand2( int V, int A) {
 
 O codigo acima tem uma performance muito melhor quando o grafo a ser gerado é denso.
 
-## Caminhos e ciclos em grafos
+# Caminhos e ciclos em grafos
 
-### Caminhos
+## Caminhos
 
 Um **passeio** (walk) em um grafo é uma sequência de vértices dotada da seguinte propriedade: se v e w são vértices consecutivos na sequência então v-w é um arco do grafo. Um **passeio é  fechado** (closed) se tem pelo menos dois arcos e seu primeiro vértice coincide com o último.
 
@@ -337,7 +339,7 @@ A **origem** de um caminho é o seu primeiro vértice. O **término** é o seu �
 
 O **comprimento** (length) de um caminho é o número de arcos do caminho.  Se um caminho tem n vértices, seu comprimento é pelo menos n−1; se o caminho é simples, seu comprimento é exatamente n−1.
 
-### Ciclos
+## Ciclos
 
 **Ciclos** são estruturas muito importantes. São os ciclos que tornam grafos interessantes mas também complexos e difíceis de manipular.
 
@@ -347,11 +349,11 @@ Um **ciclo** (cycle) em um grafo é um caminho fechado. (Portanto, todo ciclo te
 
 Todos os arcos de um ciclo apontam no mesmo sentido — de um vértice do ciclo para o seu sucessor. Há quem goste de enfatizar esse fato dizendo ciclo dirigido no lugar de ciclo.
 
-## Grafos topologicos
+# Grafos topologicos
 
 A definição de grafos topológicos exige que os vértices sejam numerados de uma certa maneira.  Assim, cada grafo é acompanhado de uma numeração (ranking) dos vértices, ou seja, uma atribuição de números inteiros aos vértices. Essa numeração dos vértices será representada por um vetor cujos índices são vértices e cujos elementos são números inteiros.
 
-### Definição
+## Definição
 
 Um **grafo é topológico** se estiver acompanhado de uma numeração topológica dos seus vértices. Uma numeração, digamos `topo[]`, é topológica se
 
@@ -371,21 +373,17 @@ bool isTopoNumbering( Graph G, int topo[]) {
 }
 ```
 
-### Propriedades
+## Propriedades
 
 - Grafos topológicos não têm ciclos (a reciproca é verdadeira).
 - Todo vértice de um grafo topológico é término de um caminho cuja origem é uma fonte.
 - Todo vértice de um grafo topológico é origem de um caminho cujo término é um sorvedouro.
 
-### Variante antitopologica
+## Variante antitopologica
 
 Uma numeração anti-topológica é uma numeração topológica ao contrário. Mais precisamente, uma numeração atopo[] dos vértices de um grafo é anti-topológica se  `atopo[v] > atopo[w]` para todo arco v-w.
 
----
-
-# Aula 09/08
-
-## Florestas radicadas
+# Florestas radicadas
 
 Uma **floresta radicada** (arvore) é um grafo topológico sem vértices com grau de entrada maior que 1.
 
@@ -403,14 +401,14 @@ bool isRootedForest( Graph G, int topo[]) {
 }
 ```
 
-### Propriedades
+## Propriedades
 
 - Florestas radicadas não têm ciclos.
 - Todo vértice de uma floresta radicada é término de um caminho que começa em uma fonte, e todo vértice é origem de um caminho que termina em um sorvedouro.
 - Todo vértice de uma floresta radicada é término de um único caminho que começa numa fonte.
 Segue daí imediatamente que, para quaisquer dois vértices v e z, existe no máximo um caminho de v a z. Ademais, se existe um caminho de v a z então não existe caminho de z a v.
 
-### Terminologia
+## Terminologia
 
 - As **fontes** de uma floresta radicada são chamadas raizes.
 - Os **sorvedouros** de uma floresta radicada são chamados folhas.
@@ -421,16 +419,16 @@ Segue daí imediatamente que, para quaisquer dois vértices v e z, existe no má
 - Um **primo** de um vértice u é qualquer vértice que não seja ancestral nem descendente de u.
 - A **profundidade** de um vértice w numa floresta radicada é o comprimento do único caminho que começa em alguma raiz e termina em w.  A **altura** da floresta radicada é a profundidade de um vértice de profundidade máxima.
 
-### Árvores radicadas
+## Árvores radicadas
 
 Uma árvore radicada (= branching) é uma floresta radicada que tem uma só raiz. A raiz é o vértice da árvore que tem o menor número em qualquer numeração topológica.
 
-### Grafos bipartidos dirigidos
+## Grafos bipartidos dirigidos
 
 Um grafo é bipartido dirigido se tiver uma numeração topológica com apenas dois valores: 0 e 1. Em outras palavras, um grafo é bipartido dirigido se existe um vetor topo[] indexado pelos vértices tal que, para cada arco v-w, topo[v] vale 0 e topo[w] vale 1.
 
 
-## Busca em profundidade (DFS)
+# Busca em profundidade (DFS)
 
 O algoritmo de busca DFS visita todos os vértices e todos os arcos do grafo numa determinada ordem e atribui um número a cada vértice: o k-ésimo vértice descoberto recebe o número k. A numeração dos vértices é registrada em um vetor `pre[]` indexado pelos vértices, ou seja, o vetor pre[] guarda o momento em que o i-esimo vertice foi descoberto.
 
@@ -460,11 +458,11 @@ static void dfsR( Graph G, vertex v) {
 
 ```
 
-### Desempenho da busca DFS
+## Desempenho da busca DFS
 
 A função GRAPHdfs() examina o leque de saída de cada vértice uma só vez. Portanto, cada arco é examinado uma só vez. Assim, se o grafo tem V vértices e A arcos, GRAPHdfs() consome tempo proporcional a **O(V+A)**.
 
-### Pré-ordem
+## Pré-ordem
 
 A ordem em que a função GRAPHdfs() descobre os vértices do grafo é chamada pré-ordem (= preorder).  Para obter a permutação dos vértices em pré-ordem basta inverter o vetor pre[], ou seja, obter a order de descoberta dos vertices:
 
@@ -478,19 +476,135 @@ for (int i = 0; i < G->V; ++i)
 
 Resumindo, dizemos que qualquer implementação do algoritmo de busca em profundidade descobre os vértices do grafo em pré-ordem.
 
+## Florestas de busca
 
+A busca em profundidade deixa uma espécie de rastro ao percorrer um grafo. Esse rastro é uma floresta radicada. Pode-se dizer que a floresta é um esqueleto do grafo.
 
+O arco v-w  que dfsR() percorre para descobrir o vértice w é conhecido como **arco de floresta**. No fim da execução de GRAPHdfs(), o conjunto dos arcos de floresta define uma floresta radicada. Essa é a **floresta de busca em profundidade**, ou **floresta DFS**, construída pela função.
 
+Uma floresta DFS contém todos os vértices do grafo e portanto é um subgrafo gerador.
 
+Uma floresta DFS pode ser confortavelmente representada por um vetor de pais, digamos `pa[0..V-1]`: para cada vértice w, pa[w] é o pai de w na floresta. A seguinte função calcula o vetor de pais à medida que numera o grafo em pré-ordem:
 
+```c
+static int cnt;
+int pre[1000];
+vertex pa[1000];
 
+/* A função GRAPHdfs() faz uma busca DFS no grafo G. Ela atribui um número de ordem pre[x] a cada vértice x (o k-ésimo vértice descoberto recebe o número de ordem k) e registra a correspondente floresta DFS no vetor de pais pa[].  (Código inspirado no programa 18.3 de Sedgewick.) */
+void GRAPHdfs( Graph G)
+{
+   cnt = 0;
+   for (vertex v = 0; v < G->V; ++v)
+      pre[v] = -1;
+   for (vertex v = 0; v < G->V; ++v)
+      if (pre[v] == -1) {
+         pa[v] = v; // v é uma raiz da floresta
+         dfsR( G, v);
+      }
+}
 
+/* A funçao dfsR() visita todos os vértices de G que podem ser alcançados a partir de v sem passar por vértices já descobertos. Todos esses vértices, e só esses, tornam-se descendentes de v na floresta radicada definida por pa[]. Se x é o k-ésimo vértice descoberto, a função atribui cnt+k a pre[x].  (O código supõe que G é representado por listas de adjacência.) */
+static void dfsR( Graph G, vertex v)
+{
+   pre[v] = cnt++;
+   for (link a = G->adj[v]; a != NULL; a = a->next) {
+      vertex w = a->w;
+      if (pre[w] == -1) {
+         pa[w] = v; // v-w é arco da floresta
+         dfsR( G, w);
+      }
+   }
+}
+```
 
+### Acima, abaixo, à esquerda e à direita
 
+Digamos que x e y são dois vértices da floresta DFS de um grafo. Como em qualquer floresta radicada, x pode ser ancestral, descendente, ou primo de y. (Um vértice é primo de outro se não for ancestral nem descendente do outro.) Além disso, em consequência da ordem em que os vizinhos de cada vértice são visitados durante a busca DFS, podemos distinguir um vértice mais velho de um vértice mais novo. Assim, se x e y são primos e pre[] é a numeração em pré-ordem associada à floresta então
 
+- x é primo mais velho, ou esquerdo, de y  se  pre[x] < pre[y]  e
+- x é primo mais novo, ou direito, de y  se  pre[x] > pre[y].
+-
+É claro que essas relações são mutuamente inversas: x é primo mais velho de y se e somente se y é primo mais novo de x.
 
+**Essas relações genealógicas entre os vértices de uma floresta DFS poderiam também ser descritas por uma metáfora espacial: acima corresponde a ancestral, abaixo corresponde a descendente, à esquerda corresponde a primo mais velho e à direita corresponde a primo mais novo.**
 
+## Arcos de retorno, de avanço, e cruzados
 
----
-~ by @carol
-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+Dada uma floresta DFS de um grafo, cada arco v-w do grafo pertence a um de três tipos, conforme a posição relativa de v e w na floresta:
+
+- se w é um descendente de v então v-w é de **avanço** (= forward arc = down arc);
+- se w é um ancestral de v então v-w é de **retorno** (= back arc);
+- se w é um primo de v então v-w é **cruzado** (= cross arc).
+
+## Numeração pos-ordem
+
+A busca em profundidade também pode numerar os vértices em pós-ordem. A combinação das numerações pos e pre é essencial para decidir eficientemente se um dado arco do grafo é de avanço, de retorno, ou cruzado em relação à floresta DFS.
+
+Durante uma busca em profundidade, um vértice v *morre* depois que todos os seus vizinhos em G e todos os seus descendentes na floresta DFS forem visitados. A ordem em que os vértices morrem é conhecida como pós-ordem. Se o grafo for uma árvore radicada, a permutação dos vértices em pós-ordem pode ser descrita recursivamente:  para cada vizinho w da raiz, visite, em pós-ordem, a subárvore que tem raiz w; depois, visite a raiz
+
+A implementação da busca em profundidade fica a seguir:
+
+```c
+static int cnt, pre[1000];
+static int cntt, post[1000];
+static vertex pa[1000];
+
+void GRAPHdfs( Graph G) {
+    cnt = cntt = 0;
+    for (vertex v = 0; v < G->V; ++v)
+        pre[v] = -1;
+    for (vertex v = 0; v < G->V; ++v)
+        if (pre[v] == -1) {
+            pa[v] = v;
+            dfsR( G, v);
+        }
+}
+
+static void dfsR( Graph G, vertex v) {
+    pre[v] = cnt++;
+    for (link a = G->adj[v]; a != NULL; a = a->next)
+        if (pre[a->w] == -1) {
+            pa[a->w] = v;
+            dfsR( G, a->w);
+        }
+    post[v] = cntt++; // numeração em pós-ordem
+}
+```
+
+### Intervalos de vida
+
+A encarnação da dfs() permanece em execução entre o instante em que `v` é descoberto e o instante em que `v` morre. Diremos que esse é o intervalo de vida (= lifespan) da encarnação. É claro que o início do intervalo corresponde a pre[v] e o fim do intervalo corresponde a post[v].
+
+Em virtude do caráter recursivo de dfs(), a coleção dos intervalos de vida de todas as encarnações de dfs() é bem organizada no seguinte sentido: cada dois intervalos são disjuntos ou estão encaixados.
+
+## Ancestrais, descendentes, e primos
+
+As relações genealógicas (ancestral, descendente, primo) entre os vértices de uma floresta DFS podem ser formuladas em termos dos intervalos de vida das várias encarnações de dfs(). Um vértice x é ancestral de um vértice y se o intervalo de dfs(G,x) contém o intervalo de dfs(G,y); x é descendente de y se o intervalo de dfs(G,x) está contido no intervalo de dfs(G,y); x é primo esquerdo de y se o intervalo de dfs(G,x) vem antes do de dfs(G,y); x é primo direito de y se o intervalo de dfs(G,x) vem depois do de dfs(G,y).
+
+Segue daí que a combinação das numerações em pré/pós-ordem permite decidir, em tempo constante, a relação entre dois vértices da floresta DFS: para quaisquer dois vértices x e y,
+
+- **x é ancestral próprio de y** se e somente se  pre[x] < pre[y]  e  post[x] > post[y];
+- **x é descendente próprio de y** se e somente se  pre[x] > pre[y]  e  post[x] < post[y];
+- **x é primo esquerdo de y** se e somente se  pre[x] < pre[y]  e  post[x] < post[y];
+- **x é primo direito de y** se e somente se  pre[x] > pre[y]  e  post[x] > post[y].
+
+A combinação de pre[] e post[] também permite decidir, em tempo constante, a classe de cada arco em relação à floresta DFS: para qualquer arco v-w que não pertence à floresta,
+
+- **v-w é de avanço** se e somente se  pre[v] < pre[w]  e  post[v] > post[w];
+- **v-w é de retorno** se e somente se  pre[v] > pre[w]  e  post[v] < post[w];
+- **v-w é cruzado** se e somente se  pre[v] > pre[w]  e  post[v] > post[w].
+
+Note que se v-w é um arco cruzado então w é primo esquerdo de v. A seguinte tabela resume a caracterização dos arcos:
+
+| pre | post | |
+| --- | --- | --- |
+| v () w | v () w | |
+| < | > | floresta |
+| < | > | avanço |
+| > | < | retorno |
+| > | > | cruzado |
+
+Grafos não-dirigidos não têm arcos cruzados. Portanto, para qualquer arco v-w de um grafo não-dirigido,
+
+v-w é de **avanço** se e somente se pre[v] < pre[w] e v-w é de **retorno** se e somente se pre[v] > pre[w].
