@@ -13,7 +13,6 @@
    - [Como resolver](#como-resolver)   
       - [Solução 1: inibir interrupções](#solução-1-inibir-interrupções)   
       - [Solução 2: implementar exclusão mutua por software](#solução-2-implementar-exclusão-mutua-por-software)   
-- [Exclusão mu](#exclusão-mu)   
       - [Solução 3: exclusão mutua por hardware, test-and-set](#solução-3-exclusão-mutua-por-hardware-test-and-set)   
    - [Semáforos](#semáforos)   
       - [Sistemas produtor consumidor](#sistemas-produtor-consumidor)   
@@ -218,7 +217,6 @@ Dessa maneira, definimos 4 condições para a sessão critica:
 O hardware possui instrução especifica para inibir interrupções, SO usa quando o codigo do kernel esta executando. Porem, é uma solução para quando temos problemas (loops infinitos, Operações inválidas, Etc)
 
 ### Solução 2: implementar exclusão mutua por software
-# Exclusão mu
 
 A primeira soção é o **algoritmo de dekker**. Esse algoritimo escolhe um processo como *favorito*, o que acaba com a chance dos processos ficarem competindo pelo uso da CPU.
 
