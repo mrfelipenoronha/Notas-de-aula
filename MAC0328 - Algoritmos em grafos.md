@@ -1,4 +1,3 @@
-
 # Indice
 
 <!-- MDTOC maxdepth:6 firsth1:1 numbering:0 flatten:0 bullets:1 updateOnSave:1 -->
@@ -38,6 +37,23 @@
    - [Numeração pos-ordem](#numeração-pos-ordem)   
       - [Intervalos de vida](#intervalos-de-vida)   
    - [Ancestrais, descendentes, e primos](#ancestrais-descendentes-e-primos)   
+- [Ciclos e DAGs](#ciclos-e-dags)   
+   - [Detecção de ciclos](#detecção-de-ciclos)   
+   - [Grafos topológicos versus dags](#grafos-topológicos-versus-dags)   
+   - [Versão compactada do algoritmo](#versão-compactada-do-algoritmo)   
+- [Caminhos minimos](#caminhos-minimos)   
+   - [Arcos relaxados e potencial viável](#arcos-relaxados-e-potencial-viável)   
+      - [Cota inferior e certificado de minimalidade](#cota-inferior-e-certificado-de-minimalidade)   
+   - [Um algoritmo para dags](#um-algoritmo-para-dags)   
+   - [Busca em largura (BFS)](#busca-em-largura-bfs)   
+- [Componentes conexas](#componentes-conexas)   
+   - [Grafos não-dirigidos conexos](#grafos-não-dirigidos-conexos)   
+   - [Componentes conexas de grafos não-dirigidos](#componentes-conexas-de-grafos-não-dirigidos)   
+   - [Cálculo das componentes conexas](#cálculo-das-componentes-conexas)   
+   - [Circuitos e florestas](#circuitos-e-florestas)   
+   - [Detecção de circuitos](#detecção-de-circuitos)   
+   - [Florestas](#florestas)   
+      - [Árvores](#árvores)   
 
 <!-- /MDTOC -->
 
@@ -608,3 +624,307 @@ Note que se v-w é um arco cruzado então w é primo esquerdo de v. A seguinte t
 Grafos não-dirigidos não têm arcos cruzados. Portanto, para qualquer arco v-w de um grafo não-dirigido,
 
 v-w é de **avanço** se e somente se pre[v] < pre[w] e v-w é de **retorno** se e somente se pre[v] > pre[w].
+
+# Ciclos e DAGs
+
+Um grafo é topológico (ou seja, tem uma numeração topológica) se e somente se não tem ciclos.
+
+## Detecção de ciclos
+
+Um ciclo num grafo é um caminho fechado. Dizemos que um grafo é **acíclico** se não tem ciclo algum. A DFS oferece uma solução muito boa para detectar um ciclo em um grafo.
+
+O algoritmo começa por fazer uma busca DFS no grafo. Depois, usa as numerações em pré- e pós-ordem produzidos pela busca para procurar um arco de retorno, pois todo arco de retorno faz parte de um ciclo.
+
+```c
+static int pre[1000], post[1000];
+
+/* Esta função decide se o grafo G tem um ciclo. */
+bool GRAPHhasCycle( Graph G) {
+
+   GRAPHdfs( G); // calcula pre[] e post[]
+
+   for (vertex v = 0; v < G->V; ++v) {
+      for (link a = G->adj[v]; a != NULL; a = a->next) {
+         vertex w = a->w;
+         if (post[v] < post[w]) // v-w é de retorno
+            return true;
+      }
+   }
+   // post[v] > post[w] para todo arco v-w
+   return false;
+}
+```
+
+## Grafos topológicos versus dags
+
+**Teorema**:  Um grafo é acíclico se e somente se tem uma numeração topológica.
+
+Grafos acíclicos também são conhecidos como  **dags**  (= directed acyclic graphs).  O teorema pode ser parafraseado assim: dags e grafos topológicos são a mesma coisa.
+
+## Versão compactada do algoritmo
+
+Podemos acelerar ligeiramente a função GRAPHhasCycle() se interrompermos a busca DFS assim que um ciclo for encontrado.
+
+```c
+static int cnt, pre[1000];
+static int cntt, post[1000];
+/* Esta função decide se o grafo G tem um ciclo. */
+
+bool GRAPHhasCycle( Graph G) {
+
+   cnt = cntt = 0;
+   for (vertex v = 0; v < G->V; ++v)
+      pre[v] = post[v] = -1;
+   for (vertex v = 0; v < G->V; ++v)
+      if (pre[v] == -1)
+         if (dfsRcycle( G, v))
+            return true;
+
+   return false;
+}
+
+/* A função dfsRcycle() devolve true se encontra um ciclo ao percorrer G a partir do vértice v e devolve false em caso contrário. */
+static bool dfsRcycle( Graph G, vertex v) {
+
+   pre[v] = cnt++;
+   for (link a = G->adj[v]; a != NULL; a = a->next) {
+      vertex w = a->w;
+      if (pre[w] == -1) {
+         if (dfsRcycle( G, w))
+            return true;
+      }
+      else {
+         if (post[w] == -1)
+            return true; // base da recursão
+      }
+   }
+   post[v] = cntt++;
+   return false;
+}
+```
+
+A complexidade desse algoritmo no pior caso é linear, O(V+A).
+
+# Caminhos minimos
+
+Um caminho C num grafo é mínimo se não existe outro caminho que tenha a mesma origem e o mesmo término que C mas comprimento menor que o de C.
+
+**Problema do caminho mínimo:** Dados vértices s e t de um grafo G, encontrar um caminho mínimo em G que tenha origem s e término t.
+
+## Arcos relaxados e potencial viável
+
+Encontrar um caminho mínimo de um dado vértice s a um dado vértice t é relativamente fácil. Mais difícil é provar que o caminho é de fato mínimo.
+
+Para provar que um dado caminho C é mínimo, precisamos mostrar que não existe caminho mais curto. Em outras palavras, precisamos mostrar que todo caminho com a mesma origem e o mesmo término que os de C é pelo menos tão comprido quanto C.  A fim de obter uma tal prova, vamos introduzir os conceitos de potencial e relaxação. Embora simples, esses conceitos são um tanto abstratos e por isso difíceis de assimilar.
+
+Um **potencial** para um grafo G é uma numeração dos vértices de G, ou seja, um vetor que associa um número a cada vértice de G.  (Uma boa metáfora para o potencial de um vértice é sua altura acima de um hipotético chão. Por isso, usarei a inicial h de height para designar um potencial.)  Em relação a um potencial `h[]`, dizemos que um arco v-w está **tenso** se h[w]-h[v] > 1  e está **relaxado** se h[w]-h[v]  ≤ 1.
+
+Um **potencial é viável** se deixa todos os arcos de G relaxados. Por exemplo, qualquer numeração anti-topológica é um potencial viável. Mas a recíproca não é verdadeira: o potencial constante é viável mas não é anti-topológico.
+
+### Cota inferior e certificado de minimalidade
+
+Suponha que `h[]` é um potencial viável em um grafo G. É fácil verificar que para qualquer caminho C de um vértice s a um vértice t tem-se
+
+`h[s] + |C|  ≥  h[t] `, sendo |C| o comprimento de C.  Portanto, `|C| ≥ h[t] − h[s]`.
+
+Em palavras: qualquer caminho de s a t é pelo menos tão comprido quanto a diferença de potencial entre t e s.
+
+Assim, se h[ ] é um potencial viável então qualquer caminho M de s a t que tenha comprimento igual a  h[t] − h[s]  é mínimo! Ou seja, esse caminho tem o **certificado de minimalidade**.
+
+## Um algoritmo para dags
+
+Em grafos acíclicos, o problema do caminho mínimo é fácil. O algoritmo é baseado no método de programação dinâmica.
+
+Como se sabe, um grafo é acíclico se e somente se tem uma numeração topológica. Por outro lado, numerações topológicas são equivalentes a permutações topológicas. Suponha então que temos uma permutação topológica vv[] dos vértices de nosso grafo.  O algoritmo processa os vértices em ordem topológica: primeiro vv[0], depois vv[1], depois vv[2], etc.
+
+O algoritmo calcula, de uma só vez, todos os caminhos mínimos que têm origem s. O conjunto de todos esses caminhos pode ser representado por uma árvore radicada com raiz s que contém todos os vértices ao alcance de s, essa árvore de caminhos mínimos, será representada por um vetor de pais, digamos pa[]. As distâncias na árvore a partir do vértice s serão armazenadas num vetor dist[].
+
+```c
+#define Dag Graph
+
+/* A função recebe um dag G, uma permutação topológica vv[] de G, e um
+vértice s de G. A função armazena em pa[] o vetor de pais de uma árvore
+de caminhos mínimos com raiz s. Se um vértice v não está ao alcance de s
+, teremos pa[v] == -1. As distâncias a partir de s são armazenadas no
+vetor dist[]. O espaço para os vetores pa[] e dist[] deve ser alocado
+pelo usuário. */
+void DAGshortestPaths( Dag G, vertex *vv, vertex s, vertex *pa, int *dist)
+{
+   const int INFINITY = G->V;
+   for (vertex v = 0; v < G->V; ++v)
+      pa[v] = -1, dist[v] = INFINITY;
+   pa[s] = s, dist[s] = 0;
+
+   for (int j = 0; j < G->V; ++j) {
+      vertex v = vv[j];
+      for (link a = G->adj[v]; a != NULL; a = a->next) {
+         vertex w = a->w;
+         if (dist[v] + 1 < dist[w]) {
+            dist[w] = dist[v] + 1; // relaxação de v-w
+            pa[w] = v;
+         }
+      }
+   }
+}
+```
+
+O **consumo de tempo** de `DAGshortestPaths()` é proporcional a  V + A no pior caso.
+
+## Busca em largura (BFS)
+
+A busca em largura começa por um vértice, digamos s, especificado pelo usuário. O algoritmo visita s, depois visita todos os vizinhos de s, depois todos os vizinhos dos vizinhos, e assim por diante.
+
+O algoritmo numera os vértices, em sequência, na ordem em que eles são descobertos (ou seja, visitados pela primeira vez). Para fazer isso, o algoritmo usa uma fila (= queue) de vértices.  No começo de cada iteração, a fila contém vértices que já foram numerados mas têm vizinhos ainda não numerados.
+
+A numeração dos vértices é registrada num vetor  num[]  indexado pelos vértices.  Se v é o k-ésimo vértice descoberto então num[v] vale k.
+
+implementação:
+
+```c
+static int num[1000];
+
+/* A função GRAPHbfs() implementa o algoritmo de busca em largura. Ela
+visita todos os vértices do grafo G que estão ao alcance do vértice s e
+registra num vetor num[] a ordem em que os vértices são descobertos.
+Esta versão da função supõe que o grafo G é representado por listas de
+adjacência.  (Código inspirado no programa 18.9 de Sedgewick.) */
+void
+GRAPHbfs( Graph G, vertex s) {
+    int cnt = 0;
+    for (vertex v = 0; v < G->V; ++v)
+        num[v] = -1;
+    QUEUEinit( G->V);
+    num[s] = cnt++;
+    QUEUEput( s);
+
+    while (!QUEUEempty( )) {
+        vertex v = QUEUEget( );
+        for (link a = G->adj[v]; a != NULL; a = a->next)
+            if (num[a->w] == -1) {
+                num[a->w] = cnt++;
+                QUEUEput( a->w);
+            }
+    }
+    QUEUEfree( );
+}
+```
+
+A busca em largura a partir de um vértice s constrói uma árvore radicada com raiz s:  cada arco v-w percorrido até um vértice w não numerado é acrescentado à árvore. Essa árvore radicada é conhecida como **árvore de busca em largura**, ou árvore BFS (= BFS tree).
+
+# Componentes conexas
+
+## Grafos não-dirigidos conexos
+
+Um grafo não-dirigido é conexo se cada um de seus vértices está ao alcance de cada um dos demais.  Em outras palavras, um grafo não-dirigido é conexo se tem a seguinte propriedade: para cada par `s` `t` de seus vértices, existe um caminho com origem `s` e término `t`.
+
+Um grafo não-dirigido é desconexo se não for conexo. Para caracterizar grafos não-dirigidos desconexos, precisamos introduzir duas definições: dizemos que um conjunto X de vértices é:
+
+- **isolado** se nenhuma aresta tem uma ponta em X e outra fora de X e
+- **trivial** se X for vazio ou contiver todos os vértices do grafo
+- .
+Agora podemos enunciar a caracterização: um grafo não-dirigido é desconexo se e somente se algum conjunto não-trivial de seus vértices é isolado.
+
+## Componentes conexas de grafos não-dirigidos
+
+Num grafo não-dirigido, a relação ao‑alcance‑de entre vértices é uma relação de equivalência, ou seja, uma relação reflexiva, simétrica e transitiva. Portanto, a relação ao‑alcance‑de impõe uma partição do conjunto de vértices em classes de equivalência: dois vértices s e t estão na mesma classe se e somente se t está ao alcance de s.
+
+Uma **componente conexa** (connected component) de um grafo não-dirigido G é o subgrafo de G induzido por alguma das classes de equivalência da relação ao‑alcance‑de. Podemos resumir essa definição dizendo que uma componente de um grafo não-dirigido é um subgrafo conexo maximal do grafo.
+
+**Problema das componentes conexas:** Encontrar as componentes conexas de um grafo não-dirigido.
+
+## Cálculo das componentes conexas
+
+Há muitas maneiras eficientes de calcular as componentes conexas de um grafo não-dirigido. A função UGRAPHcc() abaixo usa uma busca em profundidade.
+
+Para identificar as componentes conexas, vamos atribuir um rótulo cc[v] a cada vértice v de tal modo que dois vértices tenham o mesmo rótulo se e somente se estiverem na mesma componente conexa.
+
+```c
+#define UGraph Graph
+
+/* A função UGRAPHcc() devolve o número de componentes conexas do grafo
+não-dirigido G. Além disso, armazena no vetor cc[] uma numeração dos
+vértices tal que dois vértices v e w pertencem à mesma componente se e
+somente se cc[v] == cc[w]. */
+int UGRAPHcc( UGraph G, int *cc)
+{
+   int id = 0;
+   for (vertex v = 0; v < G->V; ++v)
+      cc[v] = -1;
+   for (vertex v = 0; v < G->V; ++v)
+      if (cc[v] == -1)
+         dfsRcc( G, cc, v, id++);
+   return id;
+}
+
+/* A função auxiliar dfsRcc() atribui o número id a todos os vértices
+que estão na mesma componente conexa que v. A função supõe que o grafo
+G é representado por listas de adjacência. */
+static void dfsRcc( UGraph G, int *cc, vertex v, int id)
+{
+   cc[v] = id;
+   for (link a = G->adj[v]; a != NULL; a = a->next)
+      if (cc[a->w] == -1)
+         dfsRcc( G, cc, a->w, id);
+}
+```
+Depois de executar UGRAPHcc() uma só vez, é fácil verificar, em tempo constante, se dois vértices, digamos s e t, estão na mesma componente conexa:
+
+```c
+int UGRAPHconnect( UGraph G, vertex s, vertex t) {
+   return cc[s] == cc[t];
+}
+```
+
+## Circuitos e florestas
+
+Um **circuito** (circuit) num grafo não-dirigido é um ciclo dotado da seguinte propriedade: se um arco `v-w` pertence ao ciclo então o arco antiparalelo `w-v` não pertence ao ciclo. Por exemplo, um ciclo da forma `a-b-c-d-a` é um circuito e um ciclo da forma `a-b-c-a-d-e-a` também é um circuito. Já um ciclo da forma `a-b-c-d-e-f-d-c-a` não é um circuito.
+
+Num grafo não-dirigido, o inverso de um circuito também é um circuito.
+
+Um circuito é **simples** se não tem vértices repetidos exceto o último.
+
+É aceitável abusar da ideia de igualdade e dizer que dois circuitos simples são iguais se seus conjuntos de arestas são iguais.  Por exemplo, é aceitável dizer que circuitos `0-1-2-3-0`, `1-2-3-0-1`, `2-3-0-1-2` e `3-0-1-2-3` são todos iguais.
+
+## Detecção de circuitos
+
+**Problema**:  Decidir se um dado grafo não-dirigido tem um circuito. Essa formulação do problema pede uma resposta booleana — sim ou não.
+
+Algoritmos eficientes de detecção de circuitos usam busca em profundidade. Em relação a qualquer floresta DFS, todo arco de retorno pertence a um ciclo simples. Esse ciclo é um circuito a menos que tenha comprimento 2. Essa observação leva a um algoritmo eficiente de detecção de circuitos. A ideia é fazer uma busca em profundidade para calcular uma numeração em pré-ordem e o correspondente vetor de pais e depois examinar os arcos um a um à procura de um arco de retorno que não seja antiparalelo a um arco da floresta:
+
+```c
+#define UGraph Graph
+static int pre[1000];
+static vertex pa[1000
+];
+/* Esta função decide se o grafo não-dirigido G tem algum circuito. */
+bool UGRAPHhasCircuit( UGraph G)
+{
+   GRAPHdfs( G); // calcula pre[] e pa[]
+
+   for (vertex v = 0; v < G->V; ++v) {
+      for (link a = G->adj[v]; a != NULL; a = a->next) {
+         vertex w = a->w;
+         if (pre[v] > pre[w]) // v-w é de retorno
+            if (w != pa[v]) return true;
+      }
+   }
+   return false;
+}
+```
+
+## Florestas
+
+Uma floresta (forest) é um grafo não-dirigido sem circuitos.
+
+**Definição**: Um grafo não-dirigido G é uma floresta se e somente se algum subgrafo gerador R de G tem a seguinte propriedade: R é uma floresta radicada e cada arco de G pertence a R ou é antiparalelo a um arco de R.
+
+Uma **folha** (leaf) de uma floresta é qualquer vértice de grau 1. As palavras pai, filho e raiz, que usamos ao tratar de florestas radicadas, não fazem sentido em florestas.
+
+### Árvores
+
+Uma **árvore** (tree) é uma floresta conexa. Em outras palavras, uma árvore é um grafo não-dirigido conexo sem circuitos. Portanto, cada componente conexa de uma floresta é um árvore.
+
+Duas propriedades fundamentais de árvores:
+
+- Para cada par s t de vértices de uma árvore, existe um e um só caminho de s a t.
+- Toda árvore com V vértices tem exatamente V−1 arestas.

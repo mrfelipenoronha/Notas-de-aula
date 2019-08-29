@@ -1,7 +1,7 @@
 
-# Indice
+ Indice
 
-<!-- MDTOC maxdepth:6 firsth1:2 numbering:0 flatten:0 bullets:1 updateOnSave:1 -->
+<!-- MDTOC maxdepth:6 firsth1:1 numbering:0 flatten:0 bullets:1 updateOnSave:1 -->
 
 - [Introdução a lisp/racket](#introdução-a-lispracket)
 - [Construindo nossa primeira linguagem, soma e multiplicação](#construindo-nossa-primeira-linguagem-soma-e-multiplicação)
@@ -9,6 +9,10 @@
 - [Condicionais](#condicionais)
 - [Criando executaveis de racket](#criando-executaveis-de-racket)
 - [Nova linguagem, ExprC](#nova-linguagem-exprc)
+- [Escopo dinamico](#escopo-dinamico)
+- [O problema da definição de função](#o-problema-da-definição-de-função)
+- [Closure](#closure)
+- [Trivias/piadas que o Gubi contou em aula](#triviaspiadas-que-o-gubi-contou-em-aula)
 
 <!-- /MDTOC -->
 
@@ -16,9 +20,7 @@ A bibliografia usada é [Programming Languages: Application and Interpretation](
 
 A a linguagem usada na materia é **racket** e o interpretador **drracket**.
 
-# Aula 06/08
-
-## Introdução a lisp/racket
+# Introdução a lisp/racket
 
 Usamos a chamada `#lang racket` para definir a linguagem usada no script.
 
@@ -89,7 +91,7 @@ Podemos fazer uma especie de switch com o `type-case` que tem como sintaxe `<tip
     )
 ```
 
-## Construindo nossa primeira linguagem, soma e multiplicação
+# Construindo nossa primeira linguagem, soma e multiplicação
 
 Abaixo segue o script da linguagem construida
 
@@ -129,9 +131,7 @@ Abaixo segue o script da linguagem construida
 
 ---
 
-# Aula 08/08
-
-## Explicação sobre o parser
+# Explicação sobre o parser
 
 A ideia do parser e tranformar uma expressão da forma `(+ 2 3)` em uma expressão do tipo `(plusC (nunC 2) (nunC 3))`.
 A entrada de um comando em racket (por exemplo *(+ 1 2 )*) é entendida como uma `s-expresion`.
@@ -222,9 +222,7 @@ int f = (double g)
 
 ---
 
-# Aula 13/08
-
-## Condicionais
+# Condicionais
 
 Agora, na nossa linguagem, vamos colocar um condicional. Ela vai ter a seguinte sintaxe: `if (e1, e2, e3)`, checa se a condição 1 é verdadeira, caso positivo retorna e2, caso negativo retorna e3.
 Nosso primeiro obstaculo é a representação de verdadeiro e falso. Para isso usaremos 1 como verdadeiro e 0 para falso.
@@ -283,9 +281,7 @@ Com isso temos as seguintes tranfomações em uma expressão
 
 ---
 
-# Aula 15/08
-
-## Criando executaveis de racket
+# Criando executaveis de racket
 
 Para isso usamos o **raco**, um compilador de racket. Dessa forma podemos definir um makefile para criar executaveis/binarios de racket.
 
@@ -314,8 +310,97 @@ clean:
 
 ```
 
-## Nova linguagem, ExprC
+# Nova linguagem, ExprC
 
 Agora vamos dar um proximo passo, vamos criar um tipo `ExprC`, que vai englobar tudo do `ArithC`. Agora nossa linguagem vai suportar funções.
 
 As funções sao definidas da forma `[fdC (name : symbol) (arg : symbol) (body : ExprC)]` que pode ser lida como `def name(arg) { body }`. Com isso, no core da linguagem adicionamos a chamada de uma dessas funções é a *realização/aplicação* dessa mesma função.
+
+Dessa forma, a chamada `appC` recebe um nome e um valor, ou seja, o nome da função que ele deve chamar e o(s) valores que devem ser passados como argumento. Dessa forma, precisamos substituir no `body`, todas as ocorrencias de `arg` para o `valor` passado.
+
+Por exemplo, a seguinte chamada de função em c `f(5*2 + 4)` seria algo da forma `(appC 'f (plucC (multC (nunC 5) (nunC 2)) (numC 4)))` na nossa linguagem, quando recebemos o argumento assim, na forma bruta de uma expessão, e lidamos com ele depois, chamamos de **lazy**. Ao inves disso, podemos interpretar o valor assim que ele é passado, e chamar a função ja com o valor final calculado, para o exemplo acima, ficaria `(appC 'f (nunC 14))`, á isso, damos o nome de **eager**.
+
+Na nossa solução, tanto o metodo lazy quanto o eager podem ser uteis, dependendo do contexto. Para isso, vamos usar uma hashtable, onde os valores/expressões vao ser colocados para serem substituidos durante a interpretação do programa.
+
+# Escopo dinamico
+
+Especie de definição de variavel global, qundo associamos valores/simbolos fora do escopo de chamada de função. Por exemplo, nessa chamada de fuções, temos o seguinte resultado:
+
+```lisp
+
+; funções definidas anteriormente
+(fdC 'f1 'x (appC 'f2 (nunC 4)))
+(fdC 'f2 'y (plucC (idC 'x) (idC 'y)))
+
+```
+
+A chamada `(appC 'f1 (nunC 3))`
+| resultados em lisp | em uma linguagem normal |
+| --- | --- |
+| (appC 'f1 (nunC 3)) | f1(3) |
+| (fdc-arg fd) -> 'x | |
+| (fdc-body) -> (appC 'f2 (nunC 4)) | f2(4) |
+| env(bind x -> (nunC 3)) | |
+| env(bind y -> (nunC 4))  | |
+
+Isso retorna 7. Pois uma funcão ira usar o enviroment extendido pela outra, logo, na chamada final, teremos valores associados a `'x` e a `'y`.
+
+Ou seja, o escopo dinamico faz necessario que uma função tenha que olhar todo o historico de execução, para descobrir todos os valores associados no decorrer da execução. **Isso é ruim pois pode gerar confusões e ambiguidades.**
+
+
+Para arrumar isso em nosso projeto, basta que não o enviroment não seja passado em cada chamada de função, ou seja, cada função vai ter o seu proprio escopo de variaveis.
+
+# O problema da definição de função
+
+Na nossa linguagem temos o seguinte problema: não conseguimos definir funções dentro da linguagem de forma facil. Para isso, vamos mecher no *core* da linguagem, definindo um novo operador para função. Alem disso, nosso interpretador vai retorna um novo tipo `Value`, que pode tanto ser o body de uma função ou um numero.
+
+# Closure
+
+Ideia para substitui o escopo dinamico, no qual uma função, ao ser chamada, captura o enviroment do momento em que ela foi chamada, e passsa a usar ele, porem, essa **closure** vai ser usada apenas naquela função, toda modificação de varivale feito dentro de uma closure fica dentro dela. No exemplo abaixo, a chamada de `let` possui uma closure do enviromment definido anteriormente
+
+```
+(defvar a 3)            ; a becomes 3.
+
+(let ((a 10))           ; a rebound to 10.
+  (print (+ a 6)))      ; 16 is printed.
+
+(print a)               ; 3 is printed.
+
+```
+
+## Exemplo em python
+
+```
+def g(x):
+    def f(y):
+        print(x+y)
+    return f
+
+> g
+function
+
+> oi = g("Oi, como vai ")
+
+> oi
+function
+
+> oi("Felipe")
+Oi, como vai Felipe
+```
+
+Toda vez que eu faço uma nova instancia de `g(x)` essa instancia vai ter um enviromment diferente, o atual, que no caso, é composto pelo valor de x.
+
+# Boxes
+
+Implementação primitiva de ponteiros. Ou seja, fazemos um simbolo `x` apontar para um *local* (box), essa associação simolo-local é um **bind**. A box possui um valor.
+
+Com isso, definimos nossa **store** como a memoria, ou seja, o conjunto de boxes. E deixamos as associações em cargo do enviroment.
+
+
+# Trivias/piadas que o Gubi contou em aula
+
+- 20 minutos de uma aula foram dedicados a historia de **Srinivasa Ramanujan**, um matematico genial.
+- professor disse que as vezes ele olha pra sala e ve um grande **WTF** vindo dos nossos rostos, foi engraçado.
+- O cara escreveu o programa todo na lousa e chamou o prof pra ver, a lousa tava vazia pq ne, era um codigo em **whitespace**.
+- Aprendemos que o Fabio Porchat coda em lisp, vimos o video dele entrando em uma aula do Gubi.
+- Tinha um filme super bobo que o cara era jogador de basquete e ele não ia poder jogar pq ia repetir numa materia. Dai o professor deu uma prova com a pergunta "diga-me oq vc sabe sobre socrates" e o cara respondeu "nada", dai ele foi aprovado na materia pq ele realmente não sabia nada.

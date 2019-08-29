@@ -3,21 +3,21 @@
 
 <!-- MDTOC maxdepth:6 firsth1:1 numbering:0 flatten:0 bullets:1 updateOnSave:1 -->
 
-- [Indice](#indice)   
-- [MINIX](#minix)   
-- [Conceitos de sistemas operacionais](#conceitos-de-sistemas-operacionais)   
-   - [Processos](#processos)   
-   - [Arquivos](#arquivos)   
-   - [Pricipais chamadas de sistema do MINIX](#pricipais-chamadas-de-sistema-do-minix)   
-- [Race conditions e mutex (mutual exclusion)](#race-conditions-e-mutex-mutual-exclusion)   
-   - [Como resolver](#como-resolver)   
-      - [Solução 1: inibir interrupções](#solução-1-inibir-interrupções)   
-      - [Solução 2: implementar exclusão mutua por software](#solução-2-implementar-exclusão-mutua-por-software)   
-      - [Solução 3: exclusão mutua por hardware, test-and-set](#solução-3-exclusão-mutua-por-hardware-test-and-set)   
-   - [Semáforos](#semáforos)   
-      - [Sistemas produtor consumidor](#sistemas-produtor-consumidor)   
-   - [Monitories](#monitories)   
-- [Comunicação entre processos: envio de mensagens](#comunicação-entre-processos-envio-de-mensagens)   
+- [Indice](#indice)
+- [MINIX](#minix)
+- [Conceitos de sistemas operacionais](#conceitos-de-sistemas-operacionais)
+   - [Processos](#processos)
+   - [Arquivos](#arquivos)
+   - [Pricipais chamadas de sistema do MINIX](#pricipais-chamadas-de-sistema-do-minix)
+- [Race conditions e mutex (mutual exclusion)](#race-conditions-e-mutex-mutual-exclusion)
+   - [Como resolver](#como-resolver)
+      - [Solução 1: inibir interrupções](#solução-1-inibir-interrupções)
+      - [Solução 2: implementar exclusão mutua por software](#solução-2-implementar-exclusão-mutua-por-software)
+      - [Solução 3: exclusão mutua por hardware, test-and-set](#solução-3-exclusão-mutua-por-hardware-test-and-set)
+   - [Semáforos](#semáforos)
+      - [Sistemas produtor consumidor](#sistemas-produtor-consumidor)
+   - [Monitories](#monitories)
+- [Comunicação entre processos: envio de mensagens](#comunicação-entre-processos-envio-de-mensagens)
 
 <!-- /MDTOC -->
 
@@ -439,3 +439,8 @@ As mensagens tem algumas caracteristicas/questões:
     - processo@maquina, processo@maquina.dominio
 - Autenticação: criptografia
 - Eficiência quando na mesma máquina.
+
+## Problema: Filosofos comilões
+
+**COMPLETAR COM COISAS ATE O SLIDE 88**
+# Escalonamento de processos
