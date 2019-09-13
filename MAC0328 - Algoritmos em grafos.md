@@ -54,6 +54,11 @@
    - [Detecção de circuitos](#detecção-de-circuitos)   
    - [Florestas](#florestas)   
       - [Árvores](#árvores)   
+   - [Grafos aresta-biconexos](#grafos-aresta-biconexos)   
+      - [Pontes, florestas e abraços](#pontes-florestas-e-abraços)   
+      - [Número de pré-ordem mínimo](#número-de-pré-ordem-mínimo)   
+   - [Algoritmo de Tarjan para aresta-biconexão (TARZAN)](#algoritmo-de-tarjan-para-aresta-biconexão-tarzan)   
+   - [Versão on-the-fly do algoritmo de Tarjan](#versão-on-the-fly-do-algoritmo-de-tarjan)   
 
 <!-- /MDTOC -->
 
@@ -928,3 +933,166 @@ Duas propriedades fundamentais de árvores:
 
 - Para cada par s t de vértices de uma árvore, existe um e um só caminho de s a t.
 - Toda árvore com V vértices tem exatamente V−1 arestas.
+
+## Grafos aresta-biconexos
+
+Um grafo não-dirigido é **aresta-biconexo** (edge-biconnected = 2-edge-connected) se é conexo e cada uma de suas arestas pertence a algum circuito.
+
+Num grafo não-dirigido, qualquer aresta que não pertence a um circuito é conhecida como **ponte** (bridge). Portanto, um grafo não-dirigido é aresta-biconexo se e somente se é conexo e não tem pontes.
+
+Pontes podem ser caracterizadas pela seguinte propriedade: uma aresta a de um grafo não-dirigido G é uma ponte se e somente se o grafo G−a tem mais componentes conexas que G. (Nesse sentido, grafos sem pontes são tolerantes a falhas.)
+
+**Problema da aresta-biconexão**: Decidir se um grafo não-dirigido é aresta-biconexo.
+
+A parte mais difícil do problema é decidir se o grafo é livre de pontes. Para fazer isso, basta verificar se o grafo continua conexo depois da remoção de qualquer aresta. Mas a aplicação inocente dessa ideia resulta em um algoritmo muito ineficiente.
+
+Vamos mostrar o algoritmo de Tarjan, que resolve esse problema de forma eficiente. Mas para isso, precisamos ver algumas outras coisas antes.
+
+### Pontes, florestas e abraços
+
+É fácil entender que toda floresta DFS num grafo não-dirigido passa por todas as pontes do grafo. Mas é preciso formular essa propriedade com mais cuidado pois pontes são arestas enquanto florestas DFS são formadas por arcos:
+
+Propriedade DFS das pontes: Depois de uma busca DFS num grafo não-dirigido, um dos dois arcos de cada ponte do grafo é um arco da floresta DFS.
+
+Quais arcos da floresta DFS fazem parte de pontes? A seguinte definição dá um passo na direção da resposta. Dado um arco `u-v` da floresta DFS, dizemos que um arco `x-y` do grafo abraça `u-v` se as seguintes condições forem satisfeitas:
+
+1. x é descendente de v na floresta,
+2. y é ancestral de u na floresta e
+3. x-y é diferente de v-u.
+
+(Note que x pode ser igual a v e y pode ser igual a u.)  É óbvio que qualquer arco que abraça u-v é um arco de retorno e portanto fecha um circuito que passa por u-v. A recíproca é verdadeira, embora não seja tão óbvia.  Isso leva à seguinte caracterização:
+
+**Lema do abraço**: Um arco u-v da floresta DFS faz parte de uma ponte se e somente se nenhum arco do grafo abraça u-v.
+
+### Número de pré-ordem mínimo
+
+Para que o lema do abraço possa ser usado de maneira eficiente, é preciso introduzir o conceito de número de **pré-ordem mínimo** (lowest preorder number) de um vértice. Digamos que pre[] é a numeração em pré-ordem produzida pela busca DFS no grafo. Para cada vértice v, a pré-ordem mínima de v é o número onde o mínimo é tomado sobre todos os arcos x-y que abraçam v. Esse número será denotado por `lo[v]`. É conveniente dizer que `lo[v] = pre[v]` nesse caso. Essa definição faz sentido pois se algum arco abraça v então lo[v] < pre[v].  Graças a essa definição, podemos dizer que lo[v] ≤ pre[v] para todo vértice v sem exceção.
+
+Combinado com o lema do abraço, o vetor lo[] permite dizer que **um arco u-v da floresta DFS é uma ponte se e somente se lo[v] ≡ pre[v]**.
+
+**Cálculo eficiente de lo[ ]:** O cálculo eficiente do vetor tem por base a seguinte fórmula recursiva, que exprime a componente v em função das componentes dos filhos de v. Para cada vértice v, lo[v] é o menor dos seguintes três números:
+
+- min{lo[w]} com w filho(s) de v na floresta DFS;
+- min{pre[y]} com y vizinho de v e ancestral próprio do pai de v;
+- pre[v].
+-
+A fórmula vale porque qualquer arco x-y que abraça um filho w de v também abraça v, a menos que y seja igual a v. Para aplicar a fórmula, basta examinar os vértices de baixo para cima, começando com as folhas da floresta DFS e subindo em direção às raízes. Em outras palavras, basta examinar os vértices em pré-ordem inversa, pois nessa ordem todo vértice vem depois de seus filhos. Na verdade, podemos igualmente bem examinar os vértices em pós-ordem, pois também nessa ordem todo vértice aparece depois de seus filhos.  A função seguinte UGRAPHlo() faz exatamente isso:
+
+```c
+#define UGraph Graph
+static int pre[1000];
+static vertex pa[1000];
+static int lo[1000];
+
+/* Esta função faz uma busca DFS no grafo não-dirigido G e calcula o
+lowest preorder number lo[] de cada vértice de G. Também calcula os
+vetores pre[], post[] e pa[] correspondentes à busca DFS. */
+void UGRAPHlo( UGraph G)
+{
+   vertex v, w;
+   link a;
+   GRAPHdfs( G); // calcula pre[], post[] e pa[]
+   vertex vv[1000];
+   for (v = 0; v < G->V; ++v)
+      vv[post[v]] = v;
+   // vv[0..V-1] é permutação em pós-ordem
+   for (int i = 0; i < G->V; ++i) {
+      v = vv[i];
+      int min = pre[v];
+      for (a = G->adj[v]; a != NULL; a = a->next) {
+         w = a->w;
+         if (pre[w] < pre[v]) { // (A)
+            if (w != pa[v] && pre[w] < min)
+               min = pre[w];
+         } else { // (B)
+            if (pa[w] == v && lo[w] < min)
+               min = lo[w];
+         }
+      }
+      lo[v] = min;
+   }
+}
+```
+
+## Algoritmo de Tarjan para aresta-biconexão (TARZAN)
+
+Finalmente, podemos apresentar o algoritmo de Tarjan para o problema da aresta-biconexão.  Depois de usar UGRAPHlo() para calcular os vetores pre[] e lo[], o algoritmo verifica a existência de pontes aplicando o teste lo[v] ≡ pre[v] a todo vértice v.
+
+```c
+#define UGraph Graph
+static int pre[1000], post[1000];
+static vertex pa[1000];
+static int lo[1000];
+
+/* A função UGRAPHisEbc() decide se o grafo não-dirigido G é
+aresta-biconexo. (A função implementa o algoritmo de Tarjan.) */
+bool UGRAPHisEbc( UGraph G)
+{
+   vertex v;
+   link a;
+   UGRAPHlo( G); // calcula pre[], pa[] e lo[]
+   for (v = 0; v < G->V; ++v) {
+      if (lo[v] == pre[v] && pa[v] != v)
+         return false; // pa[v]-v é ponte
+   }
+   int roots = 0;
+   for (v = 0; v < G->V; ++v) {
+      if (pa[v] == v) ++roots;
+      if (roots > 1)
+         return false; // G é desconexo
+   }
+   return true;
+}
+```
+
+## Versão on-the-fly do algoritmo de Tarjan
+
+```c
+#define UGraph Graph
+static int cnt, pre[1000];
+static vertex pa[1000];
+static int lo[1000];
+
+/* A função UGRAPHisEbc() decide se o grafo não-dirigido G é
+aresta-biconexo. (Esta é uma implementação on-the-fly do algoritmo de
+Tarjan. Código inspirado no programa 18.7 de Sedgewick.) */
+bool UGRAPHisEbc( UGraph G)
+{
+   vertex v;
+   for (v = 0; v < G->V; ++v)
+      pre[v] = -1;
+   cnt = 0;
+   pa[0] = 0;
+   if (dfsRbridge( G, 0))
+      return false; // G tem ponte
+   for (v = 1; v < G->V; ++v)
+      if (pre[v] == -1)
+         return false; // G é desconexo
+   return true;
+}
+/* A função dfsRbridge() calcula lo[v]. Devolve true se houver uma ponte na subfloresta DFS que tem raiz v. Senão, devolve false. */
+static bool dfsRbridge( UGraph G, vertex v)
+{
+   link a;
+   pre[v] = cnt++;
+   int min = pre[v];
+   for (a = G->adj[v]; a != NULL; a = a->next) {
+      vertex w = a->w;
+      if (pre[w] != -1) {
+         // v-w é de retorno ou de avanço
+         if (w != pa[v] && pre[w] < min)
+            min = pre[w];
+      } else {
+         pa[w] = v;
+         if (dfsRbridge( G, w)) // calcula lo[w]
+            return true;
+         if (lo[w] == pre[w]) // v-w é ponte
+            return true;
+         if (lo[w] < min)
+            min = lo[w];
+      }
+   }
+   lo[v] = min;
+   return false;
+}
+```

@@ -4,14 +4,19 @@
 <!-- MDTOC maxdepth:6 firsth1:1 numbering:0 flatten:0 bullets:1 updateOnSave:1 -->
 
 - [Introdução a lisp/racket](#introdução-a-lispracket)
+- [Parsing](#parsing)
+- [Interpretando](#interpretando)
 - [Construindo nossa primeira linguagem, soma e multiplicação](#construindo-nossa-primeira-linguagem-soma-e-multiplicação)
-- [Explicação sobre o parser](#explicação-sobre-o-parser)
+   - [Explicação sobre o parser](#explicação-sobre-o-parser)
+- [Sugar, yes please](#sugar-yes-please)
 - [Condicionais](#condicionais)
 - [Criando executaveis de racket](#criando-executaveis-de-racket)
 - [Nova linguagem, ExprC](#nova-linguagem-exprc)
 - [Escopo dinamico](#escopo-dinamico)
 - [O problema da definição de função](#o-problema-da-definição-de-função)
 - [Closure](#closure)
+   - [Exemplo em python](#exemplo-em-python)
+- [Boxes](#boxes)
 - [Trivias/piadas que o Gubi contou em aula](#triviaspiadas-que-o-gubi-contou-em-aula)
 
 <!-- /MDTOC -->
@@ -67,7 +72,7 @@ dot52/5
     (if (< n 2) 1 (* n (! (- n 1)))))
 ```
 
-Podemos tambem construir objetos/classes com o `define-type`.
+Podemos tambem construir *objetos/classes* com o `define-type`.
 
 Podemos fazer uma especie de switch com o `type-case` que tem como sintaxe `<tipo base> <expressão a ser computada>`, assim pode-se fazer `type-case number n` que vai fazer switch de acordo com o valor de n.
 
@@ -87,9 +92,22 @@ Podemos fazer uma especie de switch com o `type-case` que tem como sintaxe `<tip
         (type-case poli p
             [quad (l) (* l l)]
             [triang (l h) (/ (* l h) 2)]
-        )
-    )
+        ))
 ```
+
+# Parsing
+
+**Parsing** é a ideia de tranformar uma entrada de um programa em algo mais estruturado, que sera melhor aproveitado pela aplicação. Uma maneira intuitiva de representar dados é atravez de uma arvore, na qual a aplicação pode ir processando de forma recursiva.
+
+Por exemplo, a entrada `23 + 5 - 6` pode ser *parseada* para a expressão `(+ 23 (- 5 6))`, que seria facilmente interprertada em Racket.
+
+Podemos usar o mecanismo de *quotation* do racket que nos permite lidar com a entrada atravez de uma lista, a chamada `'<expr>` cria um simbolo, uma **s-expression**, que pode ser facilmente ser lida como uma lista, podendo ter outras listas dentro. Cada elemento unario de uma s-expression é um **symbol**.
+
+# Interpretando
+
+Queremos achar uma maneira de interpretar livremente expressões aritmeticas. Para isso, vamos definir funções que mapeiam expressões aritmeticas em numeros.
+
+Podemos ter coisas do tipo `(+ (- 2 3) (* 4 2))`, para isso, nosso interpretador deve lidar recursivamente com cada lado da expressão.
 
 # Construindo nossa primeira linguagem, soma e multiplicação
 
@@ -131,7 +149,7 @@ Abaixo segue o script da linguagem construida
 
 ---
 
-# Explicação sobre o parser
+## Explicação sobre o parser
 
 A ideia do parser e tranformar uma expressão da forma `(+ 2 3)` em uma expressão do tipo `(plusC (nunC 2) (nunC 3))`.
 A entrada de um comando em racket (por exemplo *(+ 1 2 )*) é entendida como uma `s-expresion`.
@@ -139,88 +157,40 @@ Apos isso, verificamos se a expressao é apenas um numero, caso positivo retorna
 
 Agora podemos fazer operações da seguinte forma
 
-`(interp (parse '(* (+ 1 2) (+ 6 8))))`
-
-A seguir esta o codigo feito em Aula
-
-```lisp
-#lang plai-typed
-
-#|
- | Incluindo troca de sinal: - unário, uminus
- | Mais açúcar?
- |#
-
-(define-type ArithC
-  [numC (n : number)]
-  [plusC (l : ArithC) (r : ArithC)]
-  [multC (l : ArithC) (r : ArithC)])
-
-; Incluindo o sinal negativo
-(define-type ArithS
-  [numS    (n : number)]
-  [plusS   (l : ArithS) (r : ArithS)]
-  [bminusS (l : ArithS) (r : ArithS)]
-  [uminusS (e : ArithS)]
-  [multS   (l : ArithS) (r : ArithS)])
-
-; Nova "desugar", ou quase
-(define (desugar [as : ArithS]) : ArithC
-  (type-case ArithS as
-    [numS    (n)   (numC n)]
-    [plusS   (l r) (plusC (desugar l) (desugar r))]
-    [multS   (l r) (multC (desugar l) (desugar r))]
-    [bminusS (l r) (plusC (desugar l) (multC (numC -1) (desugar r)))]
-    ; tentativas para o - unário
-
-    ; pode-se fazer (- 0 e)
-    ;[uminusS (e)   (desugar (bminusS (numS 0) e))]
-    ; esta solução é perigosa, pois estamos fazendo a recursão em no mesmo 'e'
-    ; isto é, recursão "generativa", ou não estutural:
-    ; o argumento da recursão é uma função, e não uma subparte, do argumento original
-
-    ; Isto resoveria,mas coloca outro problema (qual?)
-    ;[uminusS (e)   (bminusS (numS 0) (desugar e))]
-
-    ; a solução (ainda bem que existe) também se fixa apenas nas primitivas
-    [uminusS (e)   (multC (numC -1) (desugar e))]
-    ))
-
-; O interpretador é o mesmo, pois no final ainda temos ArithC
-(define (interp [a : ArithC]) : number
-  (type-case ArithC a
-    [numC (n) n]
-    [plusC (l r) (+ (interp l) (interp r))]
-    [multC (l r) (* (interp l) (interp r))]))
-
-double g = 2.0
-int f = (double g)
-
-; o parser muda mais um pouco
-(define (parse [s : s-expression]) : ArithS
-  (cond
-    [(s-exp-number? s) (numS (s-exp->number s))]
-    [(s-exp-list? s)
-     (let ([sl (s-exp->list s)])
-       (case (s-exp->symbol (first sl))
-         [(+) (plusS (parse (second sl)) (parse (third sl)))]
-         [(*) (multS (parse (second sl)) (parse (third sl)))]
-         [(-) (bminusS (parse (second sl)) (parse (third sl)))]
-         ; para o parser precisamos um sinal negativo...
-         [(~) (uminusS (parse (second sl)))]
-         [else (error 'parse "invalid list input")]))]
-    [else (error 'parse "invalid input")]))
-
-(test (interp (desugar (uminusS (numS 3) ))) -3)
-
-(define (interpS [a : ArithS]) (interp (desugar a)))
-
-(interpS (parse '(+ 5 (~ 3))))
-
-
+```lispracket
+> (parse '(+ (* 1 2) (+ 2 3)))
+- ArithC
+(plusC
+ (multC (numC 1) (numC 2))
+ (plusC (numC 2) (numC 3)))
 ```
 
----
+# Sugar, yes please
+
+A nossa linguagem foi contruida de forma bem dura e direta. As funções existentes na aplicação acima são suficientes para que possamos extender, e muito, nossa linguagem. Para isso, vamos definir novas funções que chamam as funções existentes. Á isso, damos o nome de **açucar sintatico**.
+
+Para isso, criaremos um novo tipo, o `ArithS`, que tera a seguinte cara
+
+```lisp
+(define-type ArithS
+  [numS (n : number)]
+  [plusS (l : ArithS) (r : ArithS)]
+  [multS (l : ArithS) (r : ArithS)])
+  [bminusS (l : ArithS) (r : ArithS)]
+  [uminusS (e : ArithS)])
+```
+
+Essa versão *açucarada* implementa a subtração e a inversão. Agora, devemos implementar uma função que faz o **desugar**, ou seja, mapeia as expressões de ArithS para as **funções core** de ArithC.
+
+```lisp
+(define (desugar [as : ArithS]) : ArithC
+  (type-case ArithS as
+    [numS (n) (numC n)]
+    [plusS (l r) (plusC (desugar l) (desugar r))]
+    [multS (l r) (multC (desugar l) (desugar r))]
+    [bminusS (l r) (plusC (desugar l) (multC (numC -1) (desugar r)))]
+    [uminusS (e) (desugar (bminusS (numS 0) e))]))
+```
 
 # Condicionais
 
@@ -268,7 +238,6 @@ Nosso primeiro obstaculo é a representação de verdadeiro e falso. Para isso u
 (define (neg? n) (< n 0))
 
 ```
-    exercicio de casa é implementar a divisao
 
 Com isso temos as seguintes tranfomações em uma expressão
 
@@ -395,6 +364,7 @@ Toda vez que eu faço uma nova instancia de `g(x)` essa instancia vai ter um env
 Implementação primitiva de ponteiros. Ou seja, fazemos um simbolo `x` apontar para um *local* (box), essa associação simolo-local é um **bind**. A box possui um valor.
 
 Com isso, definimos nossa **store** como a memoria, ou seja, o conjunto de boxes. E deixamos as associações em cargo do enviroment.
+
 
 
 # Trivias/piadas que o Gubi contou em aula

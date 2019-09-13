@@ -3,21 +3,34 @@
 
 <!-- MDTOC maxdepth:6 firsth1:1 numbering:0 flatten:0 bullets:1 updateOnSave:1 -->
 
-- [Indice](#indice)
-- [MINIX](#minix)
-- [Conceitos de sistemas operacionais](#conceitos-de-sistemas-operacionais)
-   - [Processos](#processos)
-   - [Arquivos](#arquivos)
-   - [Pricipais chamadas de sistema do MINIX](#pricipais-chamadas-de-sistema-do-minix)
-- [Race conditions e mutex (mutual exclusion)](#race-conditions-e-mutex-mutual-exclusion)
-   - [Como resolver](#como-resolver)
-      - [Solução 1: inibir interrupções](#solução-1-inibir-interrupções)
-      - [Solução 2: implementar exclusão mutua por software](#solução-2-implementar-exclusão-mutua-por-software)
-      - [Solução 3: exclusão mutua por hardware, test-and-set](#solução-3-exclusão-mutua-por-hardware-test-and-set)
-   - [Semáforos](#semáforos)
-      - [Sistemas produtor consumidor](#sistemas-produtor-consumidor)
-   - [Monitories](#monitories)
-- [Comunicação entre processos: envio de mensagens](#comunicação-entre-processos-envio-de-mensagens)
+- [Indice](#indice)   
+- [MINIX](#minix)   
+- [Conceitos de sistemas operacionais](#conceitos-de-sistemas-operacionais)   
+   - [Processos](#processos)   
+   - [Arquivos](#arquivos)   
+   - [Pricipais chamadas de sistema do MINIX](#pricipais-chamadas-de-sistema-do-minix)   
+- [Race conditions e mutex (mutual exclusion)](#race-conditions-e-mutex-mutual-exclusion)   
+   - [Como resolver](#como-resolver)   
+      - [Solução 1: inibir interrupções](#solução-1-inibir-interrupções)   
+      - [Solução 2: implementar exclusão mutua por software](#solução-2-implementar-exclusão-mutua-por-software)   
+      - [Solução 3: exclusão mutua por hardware, test-and-set](#solução-3-exclusão-mutua-por-hardware-test-and-set)   
+   - [Semáforos](#semáforos)   
+      - [Sistemas produtor consumidor](#sistemas-produtor-consumidor)   
+   - [Monitories](#monitories)   
+- [Comunicação entre processos: envio de mensagens](#comunicação-entre-processos-envio-de-mensagens)   
+   - [Problema: Filosofos comilões](#problema-filosofos-comilões)   
+- [Escalonamento de processos](#escalonamento-de-processos)   
+   - [Data limite](#data-limite)   
+   - [FIFO](#fifo)   
+   - [Shortest job first](#shortest-job-first)   
+   - [Shortest remaining time first](#shortest-remaining-time-first)   
+   - [Round-Robin](#round-robin)   
+   - [Multi-level queues](#multi-level-queues)   
+   - [Multi-level feedback queues](#multi-level-feedback-queues)   
+   - [Escalonamento garantido](#escalonamento-garantido)   
+   - [Sistemas multiprocessados](#sistemas-multiprocessados)   
+      - [Afinidade de processos](#afinidade-de-processos)   
+- [Deadlocks](#deadlocks)   
 
 <!-- /MDTOC -->
 
@@ -442,5 +455,92 @@ As mensagens tem algumas caracteristicas/questões:
 
 ## Problema: Filosofos comilões
 
-**COMPLETAR COM COISAS ATE O SLIDE 88**
+
+
 # Escalonamento de processos
+
+Quando se tem vários processos é necessária uma política para escolher o próximo processo a ter o controle da CPU. Tais politicas tem 4 objetivos:
+
+- Justiça: todos os processos devem ser executados
+- Eficiencia: CPU deve ser utilizada 100% do tempo
+- Tempo de resposta: usuarios iterativos não devem notar latencia
+- Fluxo: Maximizar o numero de processos que são finalizados (BATCH)
+
+Porém, temos um problema principal: processos são imprevisiveis, ou seja, não podemos determinar em quanto tempo um processo ira terminar.
+
+Damos o nome de **processos BATCH** para um coleção/lista de comandos que são executados em sequencia e que, normalmente, não requerem intervação do usuario.
+
+Para evitar que o sistema fique sempre executando processos do usuario, praticamente todos os SOs possuem uma interrupção periodica do relogio, com isso, toda vez que o relogio da um *tick* o processamento é parado, empilhando PSW e PC e em seguida dando um jump para o codigo que dara controle ao escalonamento de processos.
+
+Damos os nome de **preempção** ao ato de interromper, temporariamente, um processo que esta sendo executado, para que outro seja executado no seu lugar. Essa troca de tarefa é conhecida como **troca de contexto**. Essa troca ocorre ao custo de um overhead, pois, no minimo, o estado do processo atual deve ser salvo.
+
+A seguir, veremos alguns algoritmos de escalonamento
+
+## Data limite
+
+Tem como base o tempo real. O processo, ao iniciar, determina quando sua tarefa precisa estar completa. Esse planejamento é muito complexo, pois envolve a cuidadosa estimativa de uso dos recursos do sistema (disco, CPU, etc). Isso cria um **puta overhead**, pois os sistemas que possuem esse tipo de escalonamento usam sua CPU **apenas** para poder realizar essas estimativas.
+
+## FIFO
+
+Famoso *first in first out*. É bem basico e seu uso so parece razoavel em sistemas BATCH.
+
+## Shortest job first
+
+Escalonamento que pega o processo com menor tempo de execução. Para isso, cada processo deve dar uma estimativa do seu custo. É ruim porque os processos pequenos podem ficar rodando para sempre e os maiores nunca vão conseguir serem executados.
+
+## Shortest remaining time first
+
+Especialização do anterior, que melhora a justiça. O processo que tem o menor tempo até seu termino volta a ser/é executado.
+
+## Round-Robin
+
+Fila circular, revezamento estrito.
+
+## Multi-level queues
+
+## Multi-level feedback queues
+
+## Escalonamento garantido
+
+Tenta dar a cada USUÁRIO uma fatia igual de tempo, onde o tempo do usuário rea := tempo desde login / n. Escolhe processo de usuário com fatia real mais distante do real, ou seja, dá prioridade para o usuário que usou uma pequena fatia de tempo em comparação com outros usuários.
+
+## Sistemas multiprocessados
+
+Diferente de multiprogramação (que tinha múltiplos programas na mesma CPU). Agora, temos também múltiplas CPUs, múltiplos cores e processadores em hyper-threading (que extrai e decodifica instruções (do ciclo fetch-decode-execute) duas instruções ao mesmo tempo. A execução, porém, continua em um só). Porém, os mesmos algoritmos e aplicam, com as seguintes caracteristicas:
+
+- Assume-se SMP (simetrical multi processing)
+- Todos têm acesso à memória e aos mesmos recursos
+- Cada processo vê como se houvesse apenas uma linha, uma stream de execução
+- O Kernel tem mais interrupções (das várias CPUs/cores),  mandando os processos para uma delas conforme o caso.
+
+### Afinidade de processos
+
+**Hard affinity:** sistema garante que processo rodam no mesmo processador/core
+
+**Soft affinity**: sistema tenta na mesma CPU mas pode mudar processo para outra CPU
+
+- Melhor que CPU sem nada a fazer
+- Sistema tenta balanceamento de cargas nas CPUs de maneira que cada um tenha processos suficientes.
+- Push-migration: SO verifica periodicamente carga em cada processador (número de processos na fila) - muda se houver desbalanceamento.
+- Pull-migration: escalonador verifica sua fila. Se estiver vazia, procura na fila de outros processadores e "rouba" processos (cada um tem um escalonador).
+- O Linux combina pull e push.
+
+# Deadlocks
+
+Competiçãopor recursos (ex, dispositivos, arquivos, plotters, canais de comunicação, etc). Ocorre quando temos regiões críticas - que não podem ser compartilhados e só um processo pode usá-lo por vez. Os deadlocks são um IMPASSE que ocorre nesse sistema - quando um processo P1 precida de dois recursos, R1 e R2, e o processo P2 precisa dos mesmos recursos. Se P1 pegar R1, e P2 pegar R2, eles entram num IMPASSE. Nem P1 terminará, liberando R1 para P2 terminar,  nem P2 terminará, liberando R2 para P1 terminar.
+
+Existem 4 condições NECESSÁRIAS para que os impasses ocorram:
+
+- **Exclusão mútua**: cada recurso pode apenas ser designado a um processo.
+- **Espera e segura**: processo que requisitaram recursos previamente podem requisitar novos.
+- **Não preempção**: recursos previamente designados a processo não podem ser retirados. Os processoprecisam liberá-los explicitamente.
+- **Espera circular**: deve existir um conjunto de 2 ou mais processos que podem ser organizados em uma lista circular, onde cadaprocesso está esperando um recurso do processo anterior.
+
+Métodos de solução:
+
+- **Ignorar o problema (método avestruz)**: Se acontecer, o sistema pode ser reiniciado
+- **Detecção**: Mantém o grafo de recursos. Toda vez que um recurso for criado, é necessário checar o grafo e matar um dos  processos que o querem.
+- **Prevenção**: Ataca uma das condições necessárias (Havender)
+    - Espera e segura (wait for) - programa requisita todos os recursos de uma só vez
+    - Não preempção - se não consegue um recurso libera todos
+    - Espera circular - numerar os recursos e alocar sempre em ordem
