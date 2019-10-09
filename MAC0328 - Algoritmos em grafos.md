@@ -59,6 +59,25 @@
       - [Número de pré-ordem mínimo](#número-de-pré-ordem-mínimo)   
    - [Algoritmo de Tarjan para aresta-biconexão (TARZAN)](#algoritmo-de-tarjan-para-aresta-biconexão-tarzan)   
    - [Versão on-the-fly do algoritmo de Tarjan](#versão-on-the-fly-do-algoritmo-de-tarjan)   
+   - [Componentes aresta-biconexas](#componentes-aresta-biconexas)   
+      - [Floresta das componentes aresta-biconexas](#floresta-das-componentes-aresta-biconexas)   
+      - [Problema das componentes aresta-biconexas](#problema-das-componentes-aresta-biconexas)   
+      - [Componentes versus florestas DFS](#componentes-versus-florestas-dfs)   
+      - [O algoritmo de Tarjan](#o-algoritmo-de-tarjan)   
+      - [Implementação on-the-fly do algoritmo](#implementação-on-the-fly-do-algoritmo)   
+- [Coloração de vertices](#coloração-de-vertices)   
+   - [Uma heurística gulosa](#uma-heurística-gulosa)   
+   - [Troca de cores em componentes bicoloridas](#troca-de-cores-em-componentes-bicoloridas)   
+   - [Cliques](#cliques)   
+   - [Bipartição do conjunto de vertices](#bipartição-do-conjunto-de-vertices)   
+   - [Circuitos ímpares](#circuitos-ímpares)   
+- [Emparelhamento](#emparelhamento)   
+   - [Caminhos alternantes](#caminhos-alternantes)   
+   - [Representação de emparelhamentos](#representação-de-emparelhamentos)   
+   - [Cálculo da diferença simétrica](#cálculo-da-diferença-simétrica)   
+   - [Algoritmo húngaro](#algoritmo-húngaro)   
+- [Custo nos arcos e arestas](#custo-nos-arcos-e-arestas)   
+   - [Listas de adjacência com custos](#listas-de-adjacência-com-custos)   
 
 <!-- /MDTOC -->
 
@@ -1096,3 +1115,436 @@ static bool dfsRbridge( UGraph G, vertex v)
    return false;
 }
 ```
+
+## Componentes aresta-biconexas
+
+Uma **componente aresta-biconexa** (edge-biconnected component = 2-edge-connected component) de um grafo não-dirigido G é um subgrafo aresta-biconexo maximal de G.
+
+As seguinte propriedades das componentes aresta-biconexas de grafos não-dirigidos seguem imediatamente da definição:
+
+1. todo vértice do grafo pertence a uma e uma só de suas componentes aresta-biconexas
+1. se uma aresta do grafo tem ambas as pontas numa certa componente aresta-biconexa então essa aresta pertence a essa componente.
+
+Portanto, as componentes aresta-biconexas determinam uma partição do conjunto de vértices do grafo e cada componente aresta-biconexa é induzida por um dos blocos da partição.
+
+**Componentes versus pontes**: É claro que toda aresta de uma componente aresta-biconexa pertence a um circuito.  Reciprocamente, toda aresta do grafo que pertence a um circuito também pertence a alguma componente aresta-biconexa. Em outras palavras, uma aresta de um grafo é uma ponte se e somente se suas pontas estão em duas componentes aresta-biconexas distintas.
+
+### Floresta das componentes aresta-biconexas
+
+O grafo das componentes aresta-biconexas de G é o grafo não-dirigido `B(G)` definido assim:  os vértices de B(G) são as componentes aresta-biconexas de G e há uma aresta I–J em B(G) se e somente se I é diferente de J e alguma aresta de G tem uma ponta em I e outra em J. É claro que as arestas de B(G) correspondem às pontes de G. É fácil verificar que o grafo B(G) não tem circuitos, ou seja, que é uma floresta.
+
+### Problema das componentes aresta-biconexas
+
+**Encontrar todas as componentes aresta-biconexas de um grafo não-dirigido.**
+
+A relação entre componentes aresta-biconexas e pontes mostra o seguinte: Se P é o conjunto de todas as pontes de um grafo G então cada componente conexa de G−P é uma componente aresta-biconexa de G e vice-versa.
+
+### Componentes versus florestas DFS
+
+Tarjan mostroU como a busca DFS pode ser usada para encontrar eficientemente as componentes aresta-biconexas de um grafo. O algoritmo de Tarjan é uma extensão do algoritmo que decide se um grafo é aresta-biconexo.
+
+Antes de examinar o algoritmo, é necessário entender a relação entre florestas DFS e componentes aresta-biconexas.  Suponha que um grafo é submetido a uma busca DFS. A  cabeça  de uma componente aresta-biconexa é o primeiro vértice da componente a ser descoberto pela busca. Em outras palavras, a cabeça é o vértice da componente que tem o menor número de pré-ordem. Podemos dizer que a cabeça é a porta de entrada da componente.
+
+A cabeça de uma componente aresta-biconexa é (1) uma raiz da floresta DFS ou (2) a ponta final de um arco da floresta DFS cuja ponta inicial está em outra componente. No caso (2), o arco da floresta que entra na componente faz parte de uma ponte do grafo.
+
+Segue da definição da busca DFS que todos os vértices de uma componente aresta-biconexa descendem, na floresta DFS, da cabeça da componente.  Além disso, se c é a cabeça de uma componente aresta-biconexa C então, para qualquer vértice x de C, todos os vértices do caminho que vai de c a x na floresta DFS pertencem a C.  Essas duas propriedades podem ser resumidas assim:
+
+**Propriedade DFS das componentes aresta-biconexas**:  Para qualquer floresta DFS de um grafo não-dirigido, a subloresta induzida pelo conjunto de vértices de qualquer componente aresta-biconexa do grafo é uma árvore radicada.
+
+Se removermos os arcos da floresta DFS que entram nas cabeças de componentes aresta-biconexas, teremos uma coleção de árvores radicadas. De acordo com a propriedade acima, cada uma dessas árvores corresponde, exatamente, a uma componente aresta-biconexa do grafo.
+
+Segue da propriedade que a cabeça de qualquer componente aresta-biconexa é o vértice da componente que tem o maior número de pós-ordem.
+
+### O algoritmo de Tarjan
+
+Considere a floresta DFS produzida por uma busca DFS num grafo não-dirigido. Digamos que `c0, c1, … , cn−1` são as cabeças das componentes aresta-biconexas do grafo. Suponha que essa lista de cabeças está em pós-ordem. Assim, c0 é a primeira cabeça a morrer — ou seja, a primeira a terminar de ser processada pela função dfsR() — e cn−1 é a última. Para cada i, seja Ci a componente aresta-biconexa cuja cabeça é ci. Não é difícil deduzir da propriedade DFS das componentes aresta-biconexas que C0 é induzida pelo conjunto de todos os descendentes de c0. Já C1 é induzida pelo conjunto de descendentes de c1 que não estão em C0. Da mesma forma, C2 é induzida pelo conjunto de descendentes de c2 que não estão em C0 ∪ C1.  Finalmente, Cn−1 é induzida pelo conjunto de descendentes de cn−1 que não estão em C0 ∪ … ∪ Cn−2.
+
+Essas observações são a base do algoritmo de Tarjan. Para implementar o algoritmo, basta saber distinguir uma cabeça de um outro vértice qualquer. Como já observamos acima, toda cabeça é a ponta final de um arco de floresta que faz parte de uma ponte (exceto se a cabeça é uma raiz da floresta). Portanto, um vértice v é uma cabeça se e somente se
+
+`lo[v] ≡ pre[v]`.
+
+
+```c
+static int pre[1000], post[1000];
+static int cnt, cntt;
+static vertex pa[1000];
+static int lo[1000];
+int ebcc[1000];
+
+/* A função UGRAPHebcc() devolve o número (quantidade) de componentes
+ aresta-biconexas do grafo não-dirigido G e armazena no vetor ebcc[] uma
+ numeração dos vértices dotada da seguinte propriedade: ebcc[v] == ebcc[w]
+ se e somente se v e w estão na mesma componente. */
+int UGRAPHebcc( UGraph G)
+{
+   UGRAPHlo( G); // calcula lo[]
+   // também calcula pre[], post[] e pa[]
+   for (vertex v = 0; v < G->V; ++v)
+      ebcc[v] = -1;
+   vertex vv[1000];
+   for (vertex v = 0; v < G->V; ++v)
+      vv[post[v]] = v;
+   // vv[0..V-1] é permutação em pós-ordem
+   int id = 0;
+   for (int j = 0; j < G->V; ++j) {
+      vertex v = vv[j];
+      if (lo[v] == pre[v]) // ebcc[v] == -1
+         // v é cabeça de componente
+         compR( G, v, id++);
+   }
+   return id;
+}
+
+/* Esta função faz ebcc[x] = id para todo vértice x que seja descendente
+de v na floresta radicada representada por pa[] e tenha ebcc[x] == -1. */
+static void compR( UGraph G, vertex v, int id)
+{
+   ebcc[v] = id;
+   for (link a = G->adj[v]; a != NULL; a = a->next) {
+      vertex w = a->w;
+      if (pa[w] == v && ebcc[w] == -1)
+         compR( G, w, id);
+   }
+}
+```
+
+### Implementação on-the-fly do algoritmo
+
+Ao invocar UGRAPHlo(), a função UGRAPHebcc() examina o grafo todo duas vezes. Embora isso resulte em um algoritmo linear, é preferível obter o mesmo efeito examinando o grafo apenas uma só vez.  Para fazer isso, é preciso que as componentes aresta-biconexas sejam rotulados durante a busca DFS que calcula lo[] e não depois dela.  Não é óbvio como fazer isso, uma vez que a busca DFS não descobre uma componente aresta-biconexa completa de uma só vez: ela descobre alguns vértices de uma componente, depois alguns vértices de outra, depois alguns vértices de mais outra, até que finalmente volta a descobrir os vértices restantes da primeira componente.
+
+Para lidar com essa dificuldade, será necessário armazenar temporariamente, em uma pilha, todos os vértices descobertos durante o intervalo de vida da cabeça da componente. Quando a cabeça morrer, os vértices da correspondente componente estarão todos na pilha.  A pilha pode ser compartilhado por várias componentes diferentes.  Quando alguma cabeça v morrer, todos os vértices da componente de v estarão armazenados acima de v na pilha, podendo então ser rotulados e removidos da pilha.  A função a seguir usa um vetor stack[0..t-1] para implementar a pilha de vértices.
+
+```c
+static int pre[1000], lo[1000];
+static vertex pa[1000], stack[1000];
+static int t, cnt, id;
+int ebcc[1000];
+
+/* A função UGRAPHebcc() devolve o número de componentes aresta-biconexas
+ do grafo não-dirigido G e armazena no vetor ebcc[] uma numeração dos
+ vértices tal que ebcc[v] == ebcc[w] se e somente se v e w estão na mesma
+ componente. (A função implementa o algoritmo de Tarjan.) */
+int UGRAPHebcc( UGraph G)
+{
+   for (vertex v = 0; v < G->V; ++v)
+      pre[v] = -1;
+   t = cnt = id = 0;
+   for (vertex v = 0; v < G->V; ++v)
+      if (pre[v] == -1) { // nova etapa
+         pa[v] = v;
+         dfsRebcc( G, v);
+      }
+   return id;
+}
+
+/* Para todo vértice u na pilha de vértices stack[0..t-1] tem-se
+pre[u] != -1 e ebcc[u] == -1.  */
+static void dfsRebcc( UGraph G, vertex v)
+{
+   pre[v] = cnt++;
+   stack[t++] = v;
+   lo[v] = pre[v];
+   for (link a = G->adj[v]; a != NULL; a = a->next) {
+      vertex w = a->w;
+      if (pre[w] == -1) {
+         pa[w] = v;
+         dfsRebcc( G, w);
+         if (lo[w] < lo[v])
+            lo[v] = lo[w];
+      } else {
+         if (w != pa[v] && pre[w] < lo[v])
+            lo[v] = pre[w];
+      }
+   }
+   if (lo[v] == pre[v]) { // v é uma cabeça
+      vertex u;
+      do {
+         u = stack[--t];
+         ebcc[u] = id;
+      } while (u != v);
+      id++;
+   }
+}
+```
+
+# Coloração de vertices
+
+Uma **coloração** dos vértices de um grafo não-dirigido é uma atribuição de cores aos vértices tal que cada vértice recebe uma e uma só cor. Portanto, uma coloração nada mais é que uma partição do conjunto de vértices. Uma coloração é válida se as duas pontas de cada aresta têm cores diferentes.
+
+A expressão coloração com `k` cores não significa que todas as k cores são usadas; significa apenas que o número de cores não passa de k. Portanto, uma coloração válida com k−1 cores também é uma coloração válida com k cores. A propósito, dizemos que um grafo é k-colorível se tem uma coloração válida com k cores.
+
+Encontrar colorações válidas com muitas cores é fácil. Encontrar colorações válidas com poucas cores é bem mais difícil.
+
+**Problema da coloração mínima de vértices**: Dado um grafo não-dirigido G, encontrar uma coloração válida de G com o menor número de cores possível.
+
+É fácil provar que um grafo é k-colorível: basta exibir uma coloração válida com k cores.  Mas como provar que um dado grafo não é k-colorível? Essa questão está na base da dificuldade do problema da coloração.
+
+Um algoritmo rápido para o problema da coloração mínima ainda não foi descoberto. Suspeita-se mesmo que um tal algoritmo não existe.  Em vista disso, trataremos neste capítulo apenas de algumas heurísticas simples.
+
+## Uma heurística gulosa
+
+A seguinte heurística, conhecida como algoritmo de coloração sequencial, produz uma coloração válida de qualquer grafo. No início de cada iteração, temos uma coloração válida incompleta que usa as cores 0 1 2 ... k−1.  Cada iteração consiste no seguinte:
+
+```
+escolha um vértice incolor v
+se alguma cor i não é usada por nenhum vizinho de v
+    então atribua cor i a v
+    senão atribua cor k a v e some 1 a k
+```
+
+Em geral, cada iteração tem vários candidatos para o papel de i, ou seja, tem mais de uma cor disponível para o vértice v.
+
+```c
+#define UGraph Graph
+
+/* Esta função calcula uma coloração válida dos vértices do grafo
+não-dirigido G e devolve o número de cores efetivamente usadas. A
+coloração é armazenada no vetor color[]. */
+int UGRAPHseqColoring( UGraph G, int *color)
+{
+   int k = 0;
+   for (vertex v = 0; v < G->V; ++v) color[v] = -1;
+
+   for (vertex v = 0; v < G->V; ++v) {
+      bool disponivel[100];
+      int i;
+      for (i = 0; i < k; ++i) disponivel[i] = true;
+      for (link a = G->adj[v]; a != NULL; a = a->next) {
+         i = color[a->w];
+         if (i != -1) disponivel[i] = false;
+      }
+      for (i = 0; i < k; ++i)
+         if (disponivel[i]) break;
+      if (i < k) color[v] = i;
+      else color[v] = k++;
+   }
+   return k;
+}
+```
+
+## Troca de cores em componentes bicoloridas
+
+Para fugir do caráter guloso do algoritmo de coloração sequencial, podemos permitir que o algoritmo reveja decisões tomadas em iterações anteriores.
+
+Suponha dada uma coloração válida incompleta do grafo não-dirigido G e um vértice v que ainda não foi colorido. Suponha que dispomos de k cores apenas e que cada uma das cores é usada na vizinhança de v. É possível alterar a coloração corrente de modo que alguma das cores saia da vizinhança de v e assim fique disponível para v?  Eis uma heurística da troca de cores em componentes bicoloridas que pode fazer isso.
+
+Suponha, para simplificar, que a cor 0 aparece uma só vez na vizinhança de v.  Digamos que w é o vizinho de v que tem cor 0. Seja X o conjunto dos vértices que têm cor 0 ou 1 e considere o subgrafo não-dirigido G[X] induzido por X. Suponha que a componente conexa de G[X] que contém w não contém nenhum dos vizinhos de v que têm cor 1. Nesse caso, se intercambiarmos as cores 0 e 1 em X, a cor 0 ficará disponível para v!
+
+Essa heurística pode, às vezes, reduzir o número de cores usado pelo algoritmo de coloração sequencial.
+
+## Cliques
+
+Uma clique num grafo não-dirigido é um conjunto de vértices adjacentes entre si.
+
+É fácil encontrar uma clique pequena num grafo não-dirigido: cada vértice é uma clique de tamanho 1 e cada aresta corresponde a uma clique de tamanho 2. É bem mais difícil encontrar uma clique grande.
+
+**Problema da clique máxima**: Encontrar uma clique de tamanho máximo num grafo não-dirigido.
+
+Há uma relação simples entre cliques e coloração de vértices: se um grafo não-dirigido tem uma clique de tamanho q, então qualquer coloração válida precisa de pelo menos q cores.  Portanto, se um grafo não-dirigido tem uma clique de tamanho q e uma coloração válida com apenas q cores, a coloração é mínima e a clique é máxima.
+
+## Bipartição do conjunto de vertices
+
+Uma **bipartição**, ou bicoloração, de um grafo não-dirigido é uma coloração válida do grafo com duas cores.
+
+**Problema da bipartição:** Decidir se um dado grafo não-dirigido é bipartido.
+
+```c
+#define UGraph Graph
+int color[1000];
+
+/* A função decide se o grafo não-dirigido G admite bipartição. Em caso
+ afirmativo, a função atribui uma cor, 0 ou 1, a cada vértice de G de
+ tal forma que toda aresta tenha pontas de cores diferentes. As cores
+ dos vértices são armazenadas no vetor color[] indexado pelos vértices.
+*/
+bool UGRAPHtwoColor( UGraph G)
+{
+   for (vertex v = 0; v < G->V; ++v)
+      color[v] = -1; // incolor
+   for (vertex v = 0; v < G->V; ++v)
+      if (color[v] == -1) // começa nova etapa
+         if (dfsR2color( G, v, 0) == false)
+            return false;
+   return true;
+}
+
+/* Decide se existe uma bicoloração de G que atribui cor c ao vértice v e estende a bicoloração incompleta color[] à componente conexa de G que contém v. */
+static bool dfsR2color( UGraph G, vertex v, int c)
+{
+   color[v] = c;
+   for (link a = G->adj[v]; a != NULL; a = a->next) {
+      vertex w = a->w;
+      if (color[w] == -1) {
+         if (dfsR2color( G, w, 1-c) == false)
+            return false;
+      }
+      else { // v-w é de avanço ou de retorno
+         if (color[w] == c) // base da recursão
+            return false;
+      }
+   }
+   return true;
+}
+```
+
+## Circuitos ímpares
+
+Um circuito num grafo não-dirigido é ímpar (= odd) se seu comprimento for um número ímpar.  Se um grafo tem um circuito ímpar, então é óbvio que não admite bipartição.  A recíproca é menos óbvia, como veremos a seguir.
+
+Suponha que um grafo não-dirigido G não admite bipartição. Então a função UGRAPHtwoColor() acima devolve false quando recebe G. Portanto, dois vértices v e w de G têm a mesma cor em alguma execução da linha if (color[w] == c) do código.  Observe que o arco v-w é de avanço ou de retorno, uma vez que o grafo é não-dirigido. Suponha, primeiramente, que v-w é de retorno. Seja w-x-y-...-u-v o caminho de w a v na floresta DFS. O comprimento do caminho é par, uma vez que v e w têm a mesma cor e as cores dos vértices se alternam ao longo do caminho. Portanto, w-x-y-...-u-v-w é um circuito ímpar.  Suponha agora que v-w é de avanço. Então um raciocínio análogo ao anterior mostra que o arco w-v pertence a um circuito ímpar.  Conclusão: Se a função G não tem uma bicoloração então o grafo tem um circuito ímpar.
+
+Essa discussão pode ser resumida no seguinte
+
+**Teorema:** Um grafo não-dirigido é bipartido se e somente se não tem circuito ímpar.
+
+# Emparelhamento
+
+Um **emparelhamento** (matching) num grafo não-dirigido é um conjunto de arestas sem pontas em comum.  Em outras palavras, um emparelhamento é um conjunto M de arestas com a seguinte propriedade: o leque de cada vértice tem no máximo uma aresta de M.
+
+**Problema:** Encontrar um emparelhamento máximo em um grafo não-dirigido.
+
+## Caminhos alternantes
+
+Dado um emparelhamento num grafo não-dirigido, como obter um emparelhamento maior?  A resposta passa pelo conceito de caminho alternante.
+
+Suponha dado um emparelhamento M. Se uma aresta `v-w` pertence a M, dizemos que v e w estão **emparelhados ou casados**. Um vértice v é **solteiro** se o leque de v não contém arestas de M.
+
+Um caminho é **alternante** (alternating) em relação a um emparelhamento M se for simples e se suas arestas estiverem alternadamente em M e fora de M. Um caminho alternante é **aumentador** (augmenting) se começa e termina num vértice solteiro e tem comprimento maior que 0.
+
+Se M é um emparelhamento e P um caminho aumentador, vamos indicar por  M⊕P  o conjunto (M − EP) ∪ (EP − M),  sendo EP o conjunto de arestas de P.  O conjunto M⊕P, também conhecido como diferença simétrica de M e EP, pode ser descrito assim: tire de M todas arestas de P que estão em M e acrescente a M todas as arestas de P que não estão em M.  É fácil verificar que
+
+- M⊕P  é um emparelhamento
+- M⊕P é maior que M.
+
+Segue daí a ideia de um algoritmo iterativo para o problema do emparelhamento máximo. Cada iteração do algoritmo começa com um emparelhamento M. Cada iteração encontra um caminho aumentador P. A iteração seguinte começa com M⊕P no papel de M.  Se não houver caminho aumentador, o processo para. Quando isso acontece, o emparelhamento M é máximo!
+
+## Representação de emparelhamentos
+
+Antes de pensar em implementar algoritmos, é preciso inventar uma boa maneira de representar um emparelhamento.
+
+Usaremos um vetor `match[]` de vértices indexado por vértices para representar um emparelhamento. Se o emparelhamento casa v com w, teremos `match[v] ≡ w` e `match[w] ≡ v`. É como se match[] cuidasse de cada arco da aresta em separado. Se v é solteiro, adotaremos a convenção `match[v] ≡ -1`. É claro que vale a seguinte propriedade: se match[v] ≠ -1 então  match[match[v]] ≡ v.
+
+## Cálculo da diferença simétrica
+
+A representação de emparelhamentos que acabamos de adotar permite calcular M⊕P de maneira muito rápida. Dado um emparelhamento M, suponha que P é um caminho aumentador que começa num vértice s e termina num vértice t (é claro que s e t são solteiros). Suponha que o caminho é representado por um vetor pa[], para cada vértice w do caminho, pa[w] é o vértice anterior a w no caminho. Suponha também que pa[s] ≡ s. Então, se M é representado por um vetor match[], a seguinte função calcula M⊕P modificando match[] à medida que percorre P do fim para o começo.
+
+```c
+static vertex pa[1000];
+
+/* Esta função executa a operação M⊕P sobre um emparelhamento M e um
+caminho aumentador P. O emparelhamento é representado pelo vetor
+match[0..V-1] e o caminho é representado por um vetor pa[0..V-1]. O
+término de P é t. A origem de P não é dada explicitamente mas
+caracterizada pela propriedade pa[s] == s. */
+static void newMatching( vertex *match, vertex t)
+{
+   vertex x;
+   do {
+      x = pa[t];
+      match[t] = x;
+      match[x] = t;
+      t = pa[x];
+   } while (t != x);
+}
+```
+
+Em cada iteração, a aresta t-x é acrescentada ao emparelhamento e a aresta x-pa[x] é retirada do emparelhamento:
+
+## Algoritmo húngaro
+
+
+A seguinte função implementa o algoritmo do emparelhamento máximo esboçado acima em um grafo bipartido. O coração da implementação é a função auxiliar augmentMatch().
+
+```c
+#define UGraph Graph
+
+/* Esta função calcula um emparelhamento máximo M no grafo não-dirigido
+bipartido G. A bipartição de G é dada pelo vetor bip[0..V-1], que tem
+valores 0 e 1. A função devolve o tamanho de M e armazena uma
+representação de M no vetor match[0..V-1]: para cada vértice v, match[v]
+ é o vértice que M casa com v (ou -1 se v é solteiro). */
+int UGRAPHbipMatch( UGraph G, int *bip, vertex *match) {
+   for (vertex v = 0; v < G->V; ++v) match[v] = -1;
+   int size = 0;
+   while (augmentMatch( G, bip, match))
+      size++;
+   return size;
+}
+```
+
+A missão da função booleana auxiliar augmentMatch() é encontrar um caminho aumentador para o emparelhamento representado por match[].  Para procurar por um caminho aumentador, a função faz uma busca em largura modificada. A busca começa, simultaneamente, em todos os vértices solteiros de cor 0 e anda dois passos de cada vez:
+
+1. primeiro, percorre uma aresta que não está no emparelhamento;
+2. depois, percorre uma aresta do emparelhamento.
+
+A busca constrói uma floresta BFS alternante cujas raízes são os vértices solteiros de cor 0. A floresta é alternante porque todos os caminhos na floresta são alternantes. Se essa floresta atingir um vértice solteiro de cor 1 teremos encontrado um caminho aumentador.
+
+```c
+static vertex pa[1000];
+static bool visited[1000];
+
+/* Esta função recebe um grafo não-dirigido bipartido G, com bipartição
+bip[0..V-1], e um emparelhamento M representado por match[0..V-1]. A
+função procura calcular um emparelhamento maior que M. Se tiver sucesso,
+ devolve true e modifica match[] de acordo. Se fracassar, devolve false
+ sem alterar match[]. */
+static bool augmentMatch( UGraph G, int *bip, vertex *match)
+{
+   for (vertex v = 0; v < G->V; ++v) visited[v] = false;
+   QUEUEinit( G->V);
+   for (vertex s = 0; s < G->V; ++s) {
+      if (bip[s] == 0 && match[s] == -1) {
+         visited[s] = true;
+         pa[s] = s;
+         QUEUEput( s);
+      }
+   }
+   // a fila contém todos os vértices solteiros de cor 0
+
+   while (!QUEUEempty( )) {
+      // bip[v] == 0 para todo v na fila
+      vertex v = QUEUEget( );
+      for (link a = G->adj[v]; a != NULL; a = a->next) {
+         vertex w = a->w; // bip[w] == 1
+         if (!visited[w]) {
+            visited[w] = true;
+            pa[w] = v;
+            if (match[w] == -1) { // caminho aumentador!
+               newMatching( match, w);
+               QUEUEfree( );
+               return true;
+            }
+            vertex x = match[w]; // visited[x] == false
+            visited[x] = true;
+            pa[x] = w; // caminho ganhou segmento v-w-x
+            QUEUEput( x);
+         }
+      }
+   }
+
+   QUEUEfree( );
+   return false;
+}
+```
+
+O consumo de tempo de UGRAPHbipMatch() é proporcional a V (V + E) no pior caso.
+
+
+# Custo nos arcos e arestas
+
+Dado um grafo G, suponha que temos um função c que associa um número **ca** com cada arco **a** de G. Diremos que **ca** é o custo do arco a. Vamos supor que os custos são números do tipo int, podendo ser positivos, negativos, ou nulos.
+
+## Listas de adjacência com custos
+
+Na representação por listas de adjacência, basta acrescentar aos nós node um campo cst para acomodar os custos dos arcos.
+
+```c
+typedef struct node *link;
+struct node {
+   vertex w;
+   int cst;
+   link next;
+};
+```
+
+É claro que um terceiro argumento, correspondente ao custo, deverá ser acrescentado às funções NEWnode() e GRAPHinsertArc().    
