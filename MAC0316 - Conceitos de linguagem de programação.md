@@ -374,3 +374,21 @@ Com isso, definimos nossa **store** como a memoria, ou seja, o conjunto de boxes
 - O cara escreveu o programa todo na lousa e chamou o prof pra ver, a lousa tava vazia pq ne, era um codigo em **whitespace**.
 - Aprendemos que o Fabio Porchat coda em lisp, vimos o video dele entrando em uma aula do Gubi.
 - Tinha um filme super bobo que o cara era jogador de basquete e ele não ia poder jogar pq ia repetir numa materia. Dai o professor deu uma prova com a pergunta "diga-me oq vc sabe sobre socrates" e o cara respondeu "nada", dai ele foi aprovado na materia pq ele realmente não sabia nada.
+
+
+# Revisão P1
+
+- Play-typed é uma variação de racket, como se tivessemos dando include em uma biblioteca.
+- Nosso primeiro parser recebia uma expressão é a traduzia para nossa lingaugem, para nossas operações e motodos
+- Ao fazermos um `define-type` definimos um novo tipo, que essenciamente é uma lista, onde o primeiro elemento é o nome do tipo e o restante são seus argumentos.
+    - Se, por exemplo, definirmos o novo tipo `[fdC (nome : symbol) (arg : symbol) (body : exprC)]` o racket vai usar metaprogramação para gerar as funções `fdC-nome`, `fdC-arg` e `fdC-body`, com essas funções podemos acessar os elementos diretamente, sem precisarmos nos preocupar com as peculiaridades de listas.
+- Colocar uma `?` no final de uma expressão que retorna booleano é apenas convenção, poderiamos colocar qualquer caractere ali
+- nosso primeiro interpretador fazia as operações em si, usando o `type-case` para distrinchar esses casos
+    - a estrutura do `ArithC` é uma *lista*, com a operação (plucC, multC, ...) e os argumentos, o typecase serve apenas para ver qual a operação e pegar os respectivos argumentos
+- Nossa primeira açucarização não é nada mais nada menos doq um tratador de macros, pois todas as operações ali suportadas são traduzidas para operações do core da lingaguem. Note que, é sempre o core que sera interpretado
+- Nosso `if` não pode funcionar sem ter um else pois sempre temos que retornar algo, nem que seja um `return NULL`.
+- Em nossa primeria versão da aplicação de funções fazemos a substituição de `isso` para `valor` em `em`.
+- O subst não pode dar recursao infinita pos ele nao aplica subst em si Mesmo
+- Se eu tenho uma lista, o primeiro elemento la lista é sempre uma função que deve ser interpretada. Se eu não quiser isso tenho que fazer `'(1 2 3 4)'`
+- A função `(cons a b)` serve para criar a lista a+b
+- A prova vai ate a parte de objetos
