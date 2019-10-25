@@ -563,3 +563,210 @@ O *problema* da solução acima é que ela favorece os leitores. Enquanto proces
 
 
 ## Escalonamento
+
+Quando muitos processos estão prontos para executar, eles competem pelo uso da CPU. Para manejar isso, precisamos do **escalonador**, que vai executar um **algoritmo de escalonamento.**
+
+### Comportamento dos processos
+
+Quase todos os processos alternam sua execução entre computar algo e fazer alguma *request* de I/O (entra em estado bloqueado esperando o trabalho de outro dispositivo) . Algumas operações de I/O contam como computação, por exemplo, quando a CPU copia dados para a *video RAM* para atualizar o que esta sendo mostrado na tela.
+
+Quando um processo gasta mais tempo computando algo, ele é **compute-bound**. Caso ele gaste mais tempo esperando I/O ele é **I/O-bound**. Com o aumento do poder de processamento das CPU's os processos tendem a se tornar mais IO-bound.
+
+### Quando escalonar
+
+Temos 2 situações em que o escalonamento pode acontecer:
+
+1. Qaundo um processo termina
+2. Quando o processos esta bloqueado por IO ou por algum semaforo
+
+Temos outras 3 ocasiões em que o escalonamento tambem acontece:
+
+3. quando um novo processo é criado.
+4. quando uma interrupção para IO acontece (algum dispositivo de IO pode ter compleado seu trabalho e algum processo que estava esperando por isso pode rodar)
+5. quando uma parada de relogio (clock interrupt) ocorre
+
+O ultimo caso serve para decidir se um processo esta sendo executado por muito tempo. Um escalonamento **não-preeptivo** escolhe um processo para executar e o executa ate que ele seja bloquado ou libere a CPU. Um algoritmo **preemptivo** escolhe um processo e o excuta por um certo periodo de tempo, apos esse periodo o processo é suspenso e outro é executado em seu lugar.
+
+### Categorias de escalonamentos
+
+Em diferentes ambientes, diferentes tipos de escalonamentos são necessarios.
+
+1. **Batch**: onde não existem usuarios esperando pela resposta. Reduz as trocas de contextos, assim, são escalonamentos não-preemptivos ou que preemptivos que possui um periodo de processamento muito alto.
+
+2. **Iterativo**: Para lidar com varios usuarios, preeptivo.
+
+3. **Tempo real**: Preeptivo, executa processos pequenos que sabem a hora de parar.
+
+### Objetivos do escalonamento
+
+- Todos os tipos
+    - Fairness: Todos os processos tem uma fatia da CPU
+    - Policy enforcement: a politica definida é aplicada
+    - Balance: mantem todas as partes do sistema ocupadas
+
+- Sistemas batch
+    - Throughput: maximiza trabalhos por hora
+    - Turnaround time: minimiza tempo entre submissão e termino
+    - CPU utilization: mantem a CPU ocupada o tempo todo
+
+- Sistemas iterativos
+    - Response time: responde **requests** rapidamente
+    - Proportionality: atende usuario
+
+- Sistemas tempo-real
+    - Meeting deadlines: evita perder dados
+    - Predictability: evita degradação dos dados
+
+### Escalonamentos em sistemas batch
+
+Algoritimos usados por sistemas batch
+
+#### first-come first-served
+
+Algoritimo mais simples e não preemptivo. Processos usam a CPU na ordem em que a pedem, como uma fila simples, em que se aplica *ordem de chegada*.
+
+#### Shortest job first
+
+Esse metodo assume que os tempos de execução são conhecidod de antimão. Assim, os escalonador escolhe o processo que demora menos tempos para ser executado.
+
+#### Shortest remaining time first
+
+Similar ao de cima, so que nesse caso, o escalonador pega o proximo que esta mais proximo de ser executado.
+
+#### Three-level scheduling
+
+Quando um trabalho chega, ele é colocado numa fila de entrada no disco. O **admission scheduler** decide qual trabalho pode entrar no sistema (ele tenta fazer uma mix entre trabalhos IO-bound e compute-bound), o restante continua na fila esperando. Quando um trabalho entra no sistema um processo é criado para que ele possa ser executado na CPU.
+
+Todavia, o numero de processos podem ser tão grande que todos eles não cabem na memoria principal. Com isso, alguns processos tem que ser armazenados no disco, quem faz isso é o **memory scheduler**. Com ele, podemos decidir o **grau de multiprogramação**, ou seja, a relação entre processos que ficam na memoria principal e no disco. Para tomar a decisão sobre quais processos manter em cada lugar, ele leva os seguintes fatores em consideração:
+
+1. quanto tempo faz que tal processo mudou de lugar
+2. quanto tempo de CPU tal processo teve
+3. qual grande é tal processo
+4. quão importante é tal proceso.
+
+O proximo nivel de escalonamento é realizado pelo **CPU scheduler**, que pega o proximo processo pronto para ser executado, nele, qualquer algoritmo de escalonamento pode ser executado, preemptivo ou não.
+
+### Escalonamento em sistemas iterativos
+
+Note que, todos os metodos de escalonamento para sistemas batch tambem podem ser usados para sistemas iterativos.
+
+#### round-robin
+
+Nesse escalonamento, cada processo recebe uma quantidade de tempo, um **quantum**, na qual ele pode ser executado. Se o processo continua rodando ao fim do seu tempo, ele é interrompido e outro processo é executado em seu lugar. A unia coisa que o escalonador precisa fazer é manter uma lista de processos executaveis, quando o quantum de um processo acaba ele é colocado no fim da fila, com um novo quantum. Temos o seguinte desequilibrio:
+
+1. um quantum pequeno faz com que a CPU gaste muito tempo realizando trocas de contexto
+2. um quantum grande pode fazer com que requisições iterativas (coisa que o usuario faz e recebe) sofram atrasos.
+
+Por padrão, definimos um quantum entre 20 e 50msec.
+
+#### priority scheduling
+
+Aqui, cada processo recebe um prioridade, e o processo com maior prioridade tem o direito de ser executado. Para previnir que processos sejam executados para sempre, o escalonador pode diminuir a prioridade do processo atual a cada *tick* do relogio. Ademais, podemos definir um quantum para cada processo, assim, quando o quanto do processo atual acabar, o proximo processo com a mesma prioridade é executado.
+
+É conveniente agrupar processos de mesma prioridade e realizar escalonamento round-robin neles. É isso que o minix usa, com 16 classes de prioridade. Ele coloca como maior prioridade: drivers IO, servidores de memoria, sistema de arquivo e rede. Processos de usuario tem uma prioridade menor em realçao aos componentes do sistema.
+
+### Escalonamento em sistemas de tempo real
+
+Normalmente componentes extenos se comunicam com o computador, que deve criar uma resposta em um curto periodo de tempo. Tais sistemas são categorizados em 2 tipos:
+
+- **hard real time**: existem prazos absolutos que devem ser respeitados
+- **soft real time**: existem prazos mas da pra dar uma varzeada neles
+
+## Visão geral de processos no MINIX
+
+Ao contrario do UNIX, que tem um kernel monolitico, o MINIX é uma coleção de processos que se comunica um com o outro, atraves de mensagens. Essa estrutura torna o sistema mais flexivel e mutavel.
+
+### Estrutura interna do MINIX
+
+O MINIX é estrututurado em quatro camadas, que executam suas funções de forma bem definida.
+
+O **kernel** esta a camada de baixo (1). Realiza o escalonamento de processos e a suas respectivas transições de estados. Além disso, lida com a comunicação entre processos, passando as mensagens. Ele tambem oferece o suporte para as interrupções de IO, que requer uso de um conjunto de instruções privilegiadas do processador, **kernel mode**. Nessa camada tambem temos a **clock task**, que gera sinais de tempo utilizados pelo kernel. Uma das principais atividades dessa camada é prover um conjunto de **kernel calls** para drivers e servidores acima, cuja implementação é feita pela **system task**. Entretando, mesmo que essas duas ultimas **tasks** sejam compiladas no mesmo espaço do kernel, elas são escolanadas como processos separados.
+
+O kernel trata as 3 camadas acima dele da mesma maneira. Cada uma delas é limitadas por um conjunto de instruções pertencentes ao **user mode**, alem disso, elas não podem acessar porções de memoria fora de seus limites.
+
+Processos podem ter privilegios especiais. O processos na camada 2 tem muitos privilegios, os da camada 3 alguns privilegios e os da camada 4 não tem nenhum privilegio especial.
+
+A camada 2 possui os **devices drivers**, que basicamente são os mecanismos de fazer IO.
+
+A camada 3 possui os **servers**, que produzem o ferramentario utilizados pelos procesos de usuario.
+
+A camada 4 possui todos os processos de usuario.
+
+Camada | O que acontece |
+:--- | :--- |
+4-user processes | init, user process |
+3-server processes | process manager, file system, info server |
+2-device drivers | disk driver, tty driver, ethernet driver |
+1-kernel | kernel, clock task, system task |
+
+É importante notar a diferença entre as **kernel calls** e as **POSIX system calls**. As kernel calls são funções em baixo nivel disponibilizadas pelo system task para permitir que drivers e servidores façam seu trabalho, como por exemplo, ler a porta IO de um dispositivo. Ja as POSIX system calls (read, fork, ...) são definidas pelo padrão POSIX e estão disponiveis para os programas de usuario da quarta camada.
+
+### Gerenciamento de processos
+
+Sabemos que um processo pode criar outro processo. Dito isso, todos os processos de usuarios são criados pelo processo **init**.
+
+#### MINIX startup
+
+Em muitos computadores com discos, temos uma hierarquia de **boot disk**, em que a imagem de inicialização é procurada no primeiro dispositivo definido. Um HD é dividido em partições, a primeira sessão possui um pequeno programa e a **tabela de partição** do disco, essas duas peças formam o **master boot record**. O pequeno programa é executado para ler a tabela de partições e selecionar a **active partition**, que possui um *bootstrap* em seu inicio, que executada a fim de achar e realizar a copia do programa **boot image**.
+
+Esse programa contem: o kernel (junto com clock e system task), o process manager e o file system. Alem disso, pelo menos um driver de disco deve ser caregado, junto com alguns outros programas: reincarnation server, ram disk, console e init.
+
+Todas as partes da boot image são programas separados, que são executados separadamente depois que o kernel, PM e FS são carregados. Isso torna o sistema tolerante a falhas de inicialização.
+
+#### Inicialização da arvore de processos
+
+**Init** é o primeiro processo de usuario e o ultimo a ser carregado pela boot image, é filho do reincarnation server e recebe o PID 1. O PM é inicializado antes e recebe PID 0. O init executa o script em `/etc/rc` que inicia drivers e servidores adicionais.
+
+### Comunicação entee processos no MINIX
+
+Temos 3 chamadas principais:
+
+- send(dest, &message): manda mensagem para o processo dest
+- receive(source, &message): recebe mensagem de uma fonte ou de qualquer lugar
+- sendrec(src_dst, &message): manda mensagem e espera pela resposta, sobrescrevendo a original
+
+O fluxo normal de mensagens é para baixo, e mensagens podem ser mandadas para processos na mesma camada ou em camadas adjacentes. Quando um processo manda mensagem para outro que não a esta esperando ele fica bloqueado ate que destinataria a receba.
+
+Se um processo A tenta enviar para B e se bloqueia, e B tenta enviar para A e se bloqueia, temos um deadlock.
+
+Temos outra função importante para a transmissão de mensagens, `notify(dest)`, que avisa para dest que algo importante aconteceu, mas não bloqueia o processo que invocou. A informação passada é minima, apenas o ID do processo invocador e um *time stamp*. É usada, por exemplo, pelo teclado para avisar que uma das teclas de função (F1...f12) foi apertada. Tal função é principalemente usadas por precessos de sistema, e como eles são poucos, cada processo possui um *bitmap* de notificações, assim, quando um processo A notifica um processo B, o bit relativo ao processo A é ligado no bitmap de notificações de B, tal bitmap fica no kernel.
+
+### Escalonamento de processos do MINIX
+
+O sistema de interrupção é o que faz a multiprogramação acontecer. Interrupções tambem são geradas por software, as **traps**. As operações de `send` e `receive` são traduzidas pela biblioteca do sistema como interrupções de software.
+
+O minix implementa um sistema de **multilevel queues**, com 16 prioridades definidas. A fila mais baixa é a *IDLE*, que é executada quando não se tem nada mais pra fazer. Clock e system tasks são colocadas nas filas de maior prioridade. Ja os drivers e servidores ficam entre a prioridade dos processos de usuarios e a de clock task.
+
+O quantum não é o mesmo para todos os processos. Os processos de usuario possuem um quantum menor, enquanto drivers e servidores recebem um quantum grande. Quando o quantum de um processo acaba ele é redifinido e colocado no fim da fila.
+
+Se um processo que usou todo seu quantum tambem foi o ultimo a ser executado é sinal que temos um loop. Para resolver isso, o colocamos no final de uma fila de menor prioridade. Porem, se um processo acaba com seu quantum mas não impediu que outro processo fosse executado, ele pode ter sua prioridade aumentada.
+
+## Implementação de processos no MINIX
+
+NÃO RESUMI ESSA PARTE (PG 125-192)
+
+## System task no MINIX
+
+Uma consequencia de fazer grandes componentes do sistema fora do kernel é que elas serão proibidas de realizar IO, de manipilar tabelas do kernel etc. A solução para este problema é que o sistema ofereça um conjunto de serviços para os drivers e servidores. Tais serviçõs, que não são disponiveis para os processos de usuario, permitem realizar operações como se eles estivessem dentro do kernel.
+
+Essas operações especiais são lidadas pela **system task**, que recebe essas requisições e as encaminha para o kernel.
+
+No MINIX, as *system calls* realizadas pelos processos de usuarios são tranformadas em mensagens para os servidores. Os servidores então se comunicam entre eles e tambem com o kernel, atravez de mensagens, tais mensagens são recebidas pela systask. Vamos chamar esse ultimo tipo de mensagem de **kernel calls**.
+
+Por exemplo: `fork()` é uma syscall que é encaminhada para o PM. O PM faz algum trabalho e então faz a chamada `sys_fork` para a system task, que então vai manipular o kernel.
+
+A systask aceita 28 tipos de mensagens (kernel calls).
+
+## Clock task no MINIX
+
+Relogio é essencial para impedir que um processo monopolize a CPU. É executado no espaço do kernel é não pode ser acessada por um processo de usuario.
+
+### Clock hardware
+
+O relogio que realiza a interrupção é feito no hardware, usando o conhecimento de engenheiros. Mas é basicamente um contador que vai decrescendo. Quando chega á 0 ele faz um **clock tick**.
+
+### Clock software
+
+O que fazer com o tick gerado pelo hardware fica em cargo do clock driver. Esse driver basicamente cuida de guardar a hora do dia e de fornecer aparato para a CPU/escalonador.
+
+# Input/Output
