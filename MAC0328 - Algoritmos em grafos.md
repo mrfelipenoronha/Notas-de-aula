@@ -2,90 +2,97 @@
 
 <!-- MDTOC maxdepth:6 firsth1:1 numbering:0 flatten:0 bullets:1 updateOnSave:1 -->
 
-- [Indice](#indice)
-- [Fontes de referencia para a matéria](#fontes-de-referencia-para-a-matéria)
-- [Definições básicas sobre grafos](#definições-básicas-sobre-grafos)
-   - [Arcos anti-paralelos e paralelos](#arcos-anti-paralelos-e-paralelos)
-   - [Leques e grau dos vertices](#leques-e-grau-dos-vertices)
-   - [Numero de arcos](#numero-de-arcos)
-   - [Subgrafos](#subgrafos)
-   - [Grafos não-dirigidos](#grafos-não-dirigidos)
-- [Estrutura de dados para um grafo](#estrutura-de-dados-para-um-grafo)
-   - [Matriz de adjacencia](#matriz-de-adjacencia)
-   - [Vetor de listas de adjacencia](#vetor-de-listas-de-adjacencia)
-- [Grafos aleatorios](#grafos-aleatorios)
-   - [Construtor 1](#construtor-1)
-   - [Construtor 2](#construtor-2)
-- [Caminhos e ciclos em grafos](#caminhos-e-ciclos-em-grafos)
-   - [Caminhos](#caminhos)
-   - [Ciclos](#ciclos)
-- [Grafos topologicos](#grafos-topologicos)
-   - [Definição](#definição)
-   - [Propriedades](#propriedades)
-   - [Variante antitopologica](#variante-antitopologica)
-- [Florestas radicadas](#florestas-radicadas)
-   - [Propriedades](#propriedades)
-   - [Terminologia](#terminologia)
-   - [Árvores radicadas](#árvores-radicadas)
-   - [Grafos bipartidos dirigidos](#grafos-bipartidos-dirigidos)
-- [Busca em profundidade (DFS)](#busca-em-profundidade-dfs)
-   - [Desempenho da busca DFS](#desempenho-da-busca-dfs)
-   - [Pré-ordem](#pré-ordem)
-   - [Florestas de busca](#florestas-de-busca)
-      - [Acima, abaixo, à esquerda e à direita](#acima-abaixo-à-esquerda-e-à-direita)
-   - [Arcos de retorno, de avanço, e cruzados](#arcos-de-retorno-de-avanço-e-cruzados)
-   - [Numeração pos-ordem](#numeração-pos-ordem)
-      - [Intervalos de vida](#intervalos-de-vida)
-   - [Ancestrais, descendentes, e primos](#ancestrais-descendentes-e-primos)
-- [Ciclos e DAGs](#ciclos-e-dags)
-   - [Detecção de ciclos](#detecção-de-ciclos)
-   - [Grafos topológicos versus dags](#grafos-topológicos-versus-dags)
-   - [Versão compactada do algoritmo](#versão-compactada-do-algoritmo)
-- [Caminhos minimos](#caminhos-minimos)
-   - [Arcos relaxados e potencial viável](#arcos-relaxados-e-potencial-viável)
-      - [Cota inferior e certificado de minimalidade](#cota-inferior-e-certificado-de-minimalidade)
-   - [Um algoritmo para dags](#um-algoritmo-para-dags)
-   - [Busca em largura (BFS)](#busca-em-largura-bfs)
-- [Componentes conexas](#componentes-conexas)
-   - [Grafos não-dirigidos conexos](#grafos-não-dirigidos-conexos)
-   - [Componentes conexas de grafos não-dirigidos](#componentes-conexas-de-grafos-não-dirigidos)
-   - [Cálculo das componentes conexas](#cálculo-das-componentes-conexas)
-   - [Circuitos e florestas](#circuitos-e-florestas)
-   - [Detecção de circuitos](#detecção-de-circuitos)
-   - [Florestas](#florestas)
-      - [Árvores](#árvores)
-   - [Grafos aresta-biconexos](#grafos-aresta-biconexos)
-      - [Pontes, florestas e abraços](#pontes-florestas-e-abraços)
-      - [Número de pré-ordem mínimo](#número-de-pré-ordem-mínimo)
-   - [Algoritmo de Tarjan para aresta-biconexão (TARZAN)](#algoritmo-de-tarjan-para-aresta-biconexão-tarzan)
-   - [Versão on-the-fly do algoritmo de Tarjan](#versão-on-the-fly-do-algoritmo-de-tarjan)
-   - [Componentes aresta-biconexas](#componentes-aresta-biconexas)
-      - [Floresta das componentes aresta-biconexas](#floresta-das-componentes-aresta-biconexas)
-      - [Problema das componentes aresta-biconexas](#problema-das-componentes-aresta-biconexas)
-      - [Componentes versus florestas DFS](#componentes-versus-florestas-dfs)
-      - [O algoritmo de Tarjan](#o-algoritmo-de-tarjan)
-      - [Implementação on-the-fly do algoritmo](#implementação-on-the-fly-do-algoritmo)
-- [Coloração de vertices](#coloração-de-vertices)
-   - [Uma heurística gulosa](#uma-heurística-gulosa)
-   - [Troca de cores em componentes bicoloridas](#troca-de-cores-em-componentes-bicoloridas)
-   - [Cliques](#cliques)
-   - [Bipartição do conjunto de vertices](#bipartição-do-conjunto-de-vertices)
-   - [Circuitos ímpares](#circuitos-ímpares)
-- [Emparelhamento](#emparelhamento)
-   - [Caminhos alternantes](#caminhos-alternantes)
-   - [Representação de emparelhamentos](#representação-de-emparelhamentos)
-   - [Cálculo da diferença simétrica](#cálculo-da-diferença-simétrica)
-   - [Algoritmo húngaro](#algoritmo-húngaro)
-- [Custo nos arcos e arestas](#custo-nos-arcos-e-arestas)
-   - [Listas de adjacência com custos](#listas-de-adjacência-com-custos)
-- [Árvores geradoras de grafos não-dirigidos](#árvores-geradoras-de-grafos-não-dirigidos)
-   - [Cortes](#cortes)
-   - [Duas propriedades de substituição de arestas](#duas-propriedades-de-substituição-de-arestas)
-      - [Primeira propriedade](#primeira-propriedade)
-      - [Segunda propriedade](#segunda-propriedade)
-   - [Árvore geradora mínima (MST)](#árvore-geradora-mínima-mst)
-      - [Critério de minimalidade baseado em circuitos](#critério-de-minimalidade-baseado-em-circuitos)
-      - [Critério de minimalidade baseado em cortes](#critério-de-minimalidade-baseado-em-cortes)
+- [Indice](#indice)   
+- [Fontes de referencia para a matéria](#fontes-de-referencia-para-a-matéria)   
+- [Definições básicas sobre grafos](#definições-básicas-sobre-grafos)   
+   - [Arcos anti-paralelos e paralelos](#arcos-anti-paralelos-e-paralelos)   
+   - [Leques e grau dos vertices](#leques-e-grau-dos-vertices)   
+   - [Numero de arcos](#numero-de-arcos)   
+   - [Subgrafos](#subgrafos)   
+   - [Grafos não-dirigidos](#grafos-não-dirigidos)   
+- [Estrutura de dados para um grafo](#estrutura-de-dados-para-um-grafo)   
+   - [Matriz de adjacencia](#matriz-de-adjacencia)   
+   - [Vetor de listas de adjacencia](#vetor-de-listas-de-adjacencia)   
+- [Grafos aleatorios](#grafos-aleatorios)   
+   - [Construtor 1](#construtor-1)   
+   - [Construtor 2](#construtor-2)   
+- [Caminhos e ciclos em grafos](#caminhos-e-ciclos-em-grafos)   
+   - [Caminhos](#caminhos)   
+   - [Ciclos](#ciclos)   
+- [Grafos topologicos](#grafos-topologicos)   
+   - [Definição](#definição)   
+   - [Propriedades](#propriedades)   
+   - [Variante antitopologica](#variante-antitopologica)   
+- [Florestas radicadas](#florestas-radicadas)   
+   - [Propriedades](#propriedades)   
+   - [Terminologia](#terminologia)   
+   - [Árvores radicadas](#árvores-radicadas)   
+   - [Grafos bipartidos dirigidos](#grafos-bipartidos-dirigidos)   
+- [Busca em profundidade (DFS)](#busca-em-profundidade-dfs)   
+   - [Desempenho da busca DFS](#desempenho-da-busca-dfs)   
+   - [Pré-ordem](#pré-ordem)   
+   - [Florestas de busca](#florestas-de-busca)   
+      - [Acima, abaixo, à esquerda e à direita](#acima-abaixo-à-esquerda-e-à-direita)   
+   - [Arcos de retorno, de avanço, e cruzados](#arcos-de-retorno-de-avanço-e-cruzados)   
+   - [Numeração pos-ordem](#numeração-pos-ordem)   
+      - [Intervalos de vida](#intervalos-de-vida)   
+   - [Ancestrais, descendentes, e primos](#ancestrais-descendentes-e-primos)   
+- [Ciclos e DAGs](#ciclos-e-dags)   
+   - [Detecção de ciclos](#detecção-de-ciclos)   
+   - [Grafos topológicos versus dags](#grafos-topológicos-versus-dags)   
+   - [Versão compactada do algoritmo](#versão-compactada-do-algoritmo)   
+- [Caminhos minimos](#caminhos-minimos)   
+   - [Arcos relaxados e potencial viável](#arcos-relaxados-e-potencial-viável)   
+      - [Cota inferior e certificado de minimalidade](#cota-inferior-e-certificado-de-minimalidade)   
+   - [Um algoritmo para dags](#um-algoritmo-para-dags)   
+   - [Busca em largura (BFS)](#busca-em-largura-bfs)   
+- [Componentes conexas](#componentes-conexas)   
+   - [Grafos não-dirigidos conexos](#grafos-não-dirigidos-conexos)   
+   - [Componentes conexas de grafos não-dirigidos](#componentes-conexas-de-grafos-não-dirigidos)   
+   - [Cálculo das componentes conexas](#cálculo-das-componentes-conexas)   
+   - [Circuitos e florestas](#circuitos-e-florestas)   
+   - [Detecção de circuitos](#detecção-de-circuitos)   
+   - [Florestas](#florestas)   
+      - [Árvores](#árvores)   
+   - [Grafos aresta-biconexos](#grafos-aresta-biconexos)   
+      - [Pontes, florestas e abraços](#pontes-florestas-e-abraços)   
+      - [Número de pré-ordem mínimo](#número-de-pré-ordem-mínimo)   
+   - [Algoritmo de Tarjan para aresta-biconexão (TARZAN)](#algoritmo-de-tarjan-para-aresta-biconexão-tarzan)   
+   - [Versão on-the-fly do algoritmo de Tarjan](#versão-on-the-fly-do-algoritmo-de-tarjan)   
+   - [Componentes aresta-biconexas](#componentes-aresta-biconexas)   
+      - [Floresta das componentes aresta-biconexas](#floresta-das-componentes-aresta-biconexas)   
+      - [Problema das componentes aresta-biconexas](#problema-das-componentes-aresta-biconexas)   
+      - [Componentes versus florestas DFS](#componentes-versus-florestas-dfs)   
+      - [O algoritmo de Tarjan](#o-algoritmo-de-tarjan)   
+      - [Implementação on-the-fly do algoritmo](#implementação-on-the-fly-do-algoritmo)   
+- [Coloração de vertices](#coloração-de-vertices)   
+   - [Uma heurística gulosa](#uma-heurística-gulosa)   
+   - [Troca de cores em componentes bicoloridas](#troca-de-cores-em-componentes-bicoloridas)   
+   - [Heurística de Brélaz](#heurística-de-brélaz)   
+   - [Cliques](#cliques)   
+   - [Bipartição do conjunto de vertices](#bipartição-do-conjunto-de-vertices)   
+   - [Circuitos ímpares](#circuitos-ímpares)   
+- [Emparelhamento](#emparelhamento)   
+   - [Caminhos alternantes](#caminhos-alternantes)   
+   - [Representação de emparelhamentos](#representação-de-emparelhamentos)   
+   - [Cálculo da diferença simétrica](#cálculo-da-diferença-simétrica)   
+   - [Algoritmo húngaro](#algoritmo-húngaro)   
+- [Custo nos arcos e arestas](#custo-nos-arcos-e-arestas)   
+   - [Listas de adjacência com custos](#listas-de-adjacência-com-custos)   
+- [Árvores geradoras de grafos não-dirigidos](#árvores-geradoras-de-grafos-não-dirigidos)   
+   - [Cortes](#cortes)   
+   - [Duas propriedades de substituição de arestas](#duas-propriedades-de-substituição-de-arestas)   
+      - [Primeira propriedade](#primeira-propriedade)   
+      - [Segunda propriedade](#segunda-propriedade)   
+   - [Árvore geradora mínima (MST)](#árvore-geradora-mínima-mst)   
+      - [Critério de minimalidade baseado em circuitos](#critério-de-minimalidade-baseado-em-circuitos)   
+      - [Critério de minimalidade baseado em cortes](#critério-de-minimalidade-baseado-em-cortes)   
+- [Algoritmo de Prim](#algoritmo-de-prim)   
+   - [O algoritmo](#o-algoritmo)   
+   - [Implementações eficientes](#implementações-eficientes)   
+   - [Implementação](#implementação)   
+- [Algoritmo de Kruskal](#algoritmo-de-kruskal)   
+   - [Implementação](#implementação)   
 
 <!-- /MDTOC -->
 
@@ -1697,3 +1704,59 @@ void UGRAPHmstP2( UGraph G, vertex *pa)
 **E log V**
 
 no pior caso.  Portanto, UGRAPHmstP2() é apenas um pouco pior que linear.  Podemos dizer que UGRAPHmstP2() é linearítmica.
+
+# Algoritmo de Kruskal
+
+O algoritmo de Kruskal faz crescer uma floresta geradora até que ela se torne conexa. A floresta cresce de modo a satisfazer o critério de minimalidade de MSTs baseado em circuitos.
+
+Uma **subfloresta** de um grafo não-dirigido G é qualquer floresta que seja subgrafo não-dirigido de G. Uma **floresta geradora** de G é qualquer subfloresta que tenha o mesmo conjunto de vértices que G.
+
+Uma aresta a de G é **externa** a uma floresta geradora F se a não pertence a F e o grafo  F + a  é uma floresta, ou seja, um grafo sem circuitos. Portanto, uma aresta é externa a F se tem uma ponta em uma componente conexa de F e outra ponta em outra componente.
+
+Cada iteração do algoritmo de Kruskal começa com uma floresta geradora  F  de G. O processo iterativo é muito simples: enquanto existe alguma aresta externa,
+
+1. escolha uma aresta externa que tenha custo mínimo;
+2. seja a a aresta escolhida, acrescente a a F.
+
+No início da primeira iteração, cada componente conexa da floresta F tem apenas um vértice.  No fim do processo iterativo, F é conexa, uma vez que G é conexo e não há arestas externas a F.
+
+## Implementação
+
+Basta colocar as arestas em ordem crescente de custo e então examinar cada aresta uma só vez. Será preciso recorrer à estrutura union-find, que usa um vetor de chefes mais flexível.
+
+```c
+/* A função UGRAPHmstK1() recebe um grafo não-dirigido conexo G com custos
+arbitrários nas arestas e calcula uma MST de G.  O grafo é dado por suas
+listas de adjacência. A função armazena as arestas da MST no vetor mst[0..V-1],
+ alocado pelo usuário. */
+void UGRAPHmstK1( UGraph G, edge mst[]) {
+   edge e[500000];
+
+   UGRAPHedges( G, e);
+   int E = G->A/2;
+   sort( e, 0, E-1);
+
+   UFinit( G->V);
+   int k = 0;
+   for (int i = 0; k < G->V-1; ++i) {
+      vertex v0 = UFfind( e[i].v);
+      vertex w0 = UFfind( e[i].w);
+      if (v0 != w0) {
+         UFunion( v0, w0);
+         mst[k++] = e[i];
+      }
+   }
+}
+
+/* Esta função armazena as arestas do grafo não-dirigido G no vetor e[0..E-1]. */
+static void UGRAPHedges( UGraph G, edge e[])
+{
+   int i = 0;
+   for (vertex v = 0; v < G->V; ++v)
+      for (link a = G->adj[v]; a != NULL; a = a->next)
+         if (v < a->w)
+            e[i++] = EDGE( v, a->w, a->cst);
+}
+```
+
+**Consumo de tempo**: `(E + V) log V`.

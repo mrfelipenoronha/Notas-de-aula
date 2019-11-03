@@ -770,3 +770,526 @@ O relogio que realiza a interrupção é feito no hardware, usando o conheciment
 O que fazer com o tick gerado pelo hardware fica em cargo do clock driver. Esse driver basicamente cuida de guardar a hora do dia e de fornecer aparato para a CPU/escalonador.
 
 # Input/Output
+
+Uma das principais funções do istema operacional é controlar os dispositivos de entrada e saida, criando uma interface na qual eles possam se comunincar.
+
+## Principios do hardware de IO
+
+Neste livro, estamos interessados em olhar a parte de programação desses dispositivos, a qual esta intimamente ligada com o que ele faz.
+
+### IO devices
+
+Podemos dividir os dispositivos em duas categorias:
+
+- **block devices**: armazena sua informação em blocos de tamanho fixo, cada um com seu proprio endereço. A propriedade essencial desses dispositivos é que existe a possiblida de ler e alterar tais blocos de maneira independente. Discos são os maiores representantes.
+- **Character devices**: esse tipo de dispositivo entrega/recebe um fluxo de dados, não é endereçavel e não possui nenhuma operação de busca. Impressoras, mouses e etc.
+
+O sistema de arquivos lida com abstrações de dispositivos de blocos, deicando a parte que faz a comunicação direta com o hardware para um software mais baixo, o **device driver**.
+
+Os dispositivos variam bastante em relação a velocidade de transmissão dos dados, deixando em cargo do software lidar com essas diferenças.
+
+### Device controllers
+
+O componente eletronico de um dispositivo é chamado **device controller** ou **adapter**, esse controlador faz a ligação entre a parte mecanica e a digital do dispositivo, normalmente a programação é feita em uma linguagem de baixo nivel. Os dispositivos são normalmente conectados á placa mãe, e uma enterface entre ela e o dispositivo normalmente segue um padrão oficial ANSI, IEEE ou ISO.
+
+Os SO se comunicam apenas com os controladores dos dispositivos. A maioria dos computadores utilizam o modelo de *bus*, que é basicamente uma unica linha de conexão entre os dispositivos e a CPU.
+
+### Memory-mapped IO
+
+Cada controlador possui alguns registradores que são utilizados para fazer a comunicação com a CPU, assim, o sistema operação consegue requisitar ações do dispositivo escrevendo nestes registradores.
+
+Muitos dispositivos tambem possuem um **data buffer**, no qual o SO pode escrever coisas que serão feitas. Os monitores possuem uma VRAM que armazena oq sera exibido.
+
+Para que a CPU se comunique com esses registradores e buffers temos duas alternativas. A primeira alternativa faz com que cada registrador de cada controlador possua uma **IO port number**, ou seja, um endereço em que se pode ler/escrever. A segunda opção é fazer que os registradores façam parte do espaço normal de memoria, chamamos isso de **memory mapped IO**, assim, quando uma operação é feita temos uma epecie de `if (isIO) else if (isNormalStuff)` que separa o que deve ser acessado da memoria e o que deve ser feitos em controladores.
+
+### Interrupções
+
+Registradores dos controladores possuem alguns **status bits** que podem ser testados para saber se uma requisição de dados ja foi completada ou se novos dados de um *input device* estão disponiveis.
+
+A CPU pode ficar testando esses bits ate que o dispositivo esteja pronto para receber/enviar novos dados, esse processo é chamado de **polling** ou **busy waiting**. Tal processo não é muito bom, e so é recomendado para sistemas pequenos que não possuem muitos processos.
+
+Muitos controladores utilizam interrupções para dizer a CPU que ele esta pronto para enviar/receber algo, para isso eles utilizam a linha especial de IRC (Interrpt ReQuest) do *bus system*, porem, o numero dessas linhas é limitado é podem haver conflitos entre dispositvos. Isso levou a industrua a desenvoler o **plug'n play**, na qual a BIOS decide qual dispositivo vai usar cada IRC, em tempo de boot.
+
+## Principios de IO software
+
+Vamos ver as coisas do ponto de vista do SO
+
+### Objetivos do IO software
+
+O principal conceito é o de **device independence**, ou seja, de que um programa possa acessar qualquer dispositivo, sem que isso tenha que ser definido de antemão. Um programa que le um arquivo deveria poder ler tal arquvio de um disquete, de um disco ou de um CD-ROM, sem ter que ser modificado para cada um. Deve ser resposabilidade do SO cuidar da diferenciação de cada um, de saber quais comandos podem/devem ser utilizados.
+
+Alem disso, temos o conceito de **uniform naming**, o qual define que o nome de cada dispositivo deve ser simplesmente uma string ou numero. No UNIX e MINIX todo tipo de disco podem ser itegrado na hierarquia do sistema de arquivos.
+
+Outro problema é o de **error handling**, que deve tentar ser tratado pelos niveis mais inferiores (controladores e drivers), so devendo ser passado para os niveis mais altos em ultimo caso.
+
+Outra questão é a de tranferecias **sincronas** (blocking) vs **assincronas** (interrup driven). A maioria das operações IO fisicas são assincronas, a CPU começa a tranferencia e vai fazer outra coisa. Programas de usuario funcionam de modo mais simples caso a tranferecias seja feita atravez de bloqueio, por exemplo, quando um programa é avisado que recebeu algum dado de algum dispositivo ele é suspenso ate que toda essa infromação esteja disponivel em um buffer.
+
+Outros dois problemas são **beffering**, informação tem que ser guardada temporiareamente ate ser usada, e **compartilhabilidade**, se mais de um usuario pode ter acesso ao device.
+
+O software de IO é organizado em 4 camadas:
+
+- User-level I/O software
+- Device-independent operating system software
+- Device drivers
+- Interrupt handlers
+- Hardware
+
+### Interrupt handlers
+
+Um driver que começa uma operação IO fica bloqueado ate que essa operação seja concluida, quando essa operação termina uma interrupção acontece. Quando a interrupção é feita, o *handler* faz oq for preciso para que tudo ocorra adequadamente, então ele pode desbloquar o driver que o invocou. Esse modelo funciona bem se os drivers forem tratados como processos.
+
+### Device drivers
+
+Cada dispositivo precisa de uma API especial para que possa ser controlado, chamamos isso de **device driver**, é como se fosse uma biblioteca que oferece uma abstração acerca do dispositivo, para aplicações que as usarão.  Um driver controla um unico dispositivo ou uma familia de dispositivos muito semelhantes.
+
+Na maioria dos sistemas, esses drivers fazem parte do kernel, por motivos de performance. No MINIX, os drivers são separados e executados como processos de usuarios, por motivos de confiabilidadde.
+
+A maioria dos SO definem uma interface padrão na qual dispositivos de bloco e caracteres devem suportar, essa interface consiste em um conjunto de operações que o SO pode fazer uso.
+
+Depois que o driver recebe uma comando, ele checa se os parametros passados estão corretos. Apos tal checagem, ele traduz esses comandos para algo que faça sentido para o controlador, ou seja, começa a escrever nos registradores do controlador. Depois disso, duas coisas podem acontecer: o driver tem que esperar ate que o controlador faça algo, então ele se bloqueia e espera ate que uma interrupção aconteça e o desbloqueie; a operação termina sem *delay* e o driver não precisa ser bloquado.
+
+Em qualquer um dos casos, os driver checa se a operação foi feita corretamente e da um *feedback* para a aplicação no nivel acima.
+
+O papel do driver tambem pode ser inicializar o dispositivo no *startup* do SO, lidar com o plug'n play ou realizar logs.
+
+### Device-independent IO software
+
+Uma grande parcela dos softwares de dispositivos IO não dependendem diretamente do dispositivo. No MINIX, a maioria desse software faz parte do file system. A função desse tipo de software é realizar operações que são comuns em todos os dispositivos e assim prover uma interface uniforme para as aplicações de usuario.
+
+A seguir, vamos olhar algumas resposabilidades do *device independent software*.
+
+#### Interface uniforma para drivers de dispositivos
+
+Um dos desafios é fazer com que os dispositivos e drivers sigam um padrão, assim, o SO não precisa ser modificado cada vez que um novo dispositivo for conectado.
+
+Outro aspecto dessa interface uniforme é a maneira em que os dispositvos são nomeados. O *device independent software* cuida de mapear um nome para o dispositivo itself. No UNIX e no MINIX, um dispositivo, por exemplo, `/dev/disk0` especifica unicamente o i-node para um arquivo especial. Nesse arquivo temos duas infromações:
+
+- **major device number**: Usado para localizar o driver apropriado, como se fosse sua identificação;
+- **minor device number**: Passado para o driver para esficificar a unidade em que se quer fazer a operação.
+
+Temos a questão de segurança, como garantir que um usuario não acesse dispositivos que ele não tem permissão de acessar? No UNIX e no MINIX os dispositivos aparecem como abjetos no sistema de arquivos, o que significa que as regras padrão de proteção (famoso *rwx bits*) são tambem aplicada aos devices.
+
+#### Buffering
+
+O *device independent software* tambem cuida do buffering apra dispostivos de bloco e de caracteres. Os dispostivos de bloco podem escrever/ler um bloco de uma vez so, assim, caso uma aplicação escreva só metade de um bloco, o SO normalmente vai guardar essa informação em um buffer e esperar a outra metade, para mandar so uma requisição pro device. Ja nos dispositivos de caracteres, podemos ter que esperar ate que os dados fornecidos por eles possam ser usados.
+
+#### Error reporting
+
+Erros são as coisas mais comuns em IO. Muitos erros são especificos dos dispositivos, então quem cuida deles é o driver. Porém, o restante dos erros é passado para o sistema, e quem cuida disso é um *device independent software*, tomando a atitude necessaria.
+
+#### Allocating and releasing dedicated devices
+
+Alguns dispositvos so podem ser usados por um processo, assim, o SO tem que decidir quem pode realizar ações no dispositivo em um dado momento.
+
+#### Device independent block size
+
+Um *device independent software* cuida de fazer com que os dispositivos tenham o mesmo tamaho de blocos para os softwares de alto nivel. Por exemplo, dois discos podem ter setores de tamanho diferentes, e o software faz eles parecerem que tem o mesmo tamanho de setor. A mesma coisa se aplica para dispositvos de caracteres, que podem transmitir diferentes quantidades de informações por vez.
+
+### User space IO software
+
+Uma porção do software de IO consiste de bibliotecas que são utilizadas por programas de usuario, por exemplo, a chamada `write(fd, buffer, nbytes)`, é uma syscall que implementa uma operação de IO.
+
+Porem, nem todos software de user-space-IO consiste de bibliotecas. Um exemplo é o sistema de **spooling**, que é uma maneira de lidar com dispositivos IO em um sistema de multiprogramação. Vamos analisar o caso de uma impressora. Para imprimir, é necessario escrever num arquivo especial, que então é lido e impresso. Porem, não podemos permitir que os processos acessem diretamente esse arquivo especial. O que fazemos é criar um **spooling directory**, assim, quando um processo quer imprimir algo, basta que ele coloque o arquivo a ser impresso neste diretorio. Criamos tambem um **deamon**, que vai ser o unico processo com permissão á modificar o arquivo especial da impressora, a resposabilidade do deamon vai ser a seguinte: ele vai ler todos os arquvios que estao no spooling directory e cuidar para que eles sejam impressos na ordem.
+
+## Deadlocks
+
+Vamos estudar os deadlocks no contexto do SO
+
+### Recursos
+
+Deadlocks podem acontecer quando processos tem acesso exclusivo á dispositivos, arquvios e etc. Vamos nos referir á qualquer um desses objetos como **recurso**.
+
+Recursos podem ser preemptivos (pode ser retirado do processo que o tem sem nehum efeito colateral) ou não-preemptivos (contrario), sendo o segundo o tipo mais comum para se ocorrer um deadlock, já que se temos um deadlock em um recurso preeptivo basta realoca-lo para um dos processos envolvidos. Existem 3 passos para se usar um recurso:
+
+1. pedir o recurso
+2. usar o recurso
+3. liberar o recursos
+
+### Principios de deadlocks
+
+Definição: **A set of processes is deadlocked if each process in the set is waiting for an event that only another process in the set can cause.**
+
+#### Condições para deadlocks
+
+Precisamos de 4 condições para um deadlock acontecer:
+
+- Exclusão mutua: Cada recurso ou esta em uso por exatamente um processo ou esta livre
+- Hold and wait: Processos que ja possuem recursos podem pedir mais recursos
+- Não preepção: Nenhum recurso dado á um processo pode ser tirado dele á força, ou seja, um recurso alocado so fica livre se o processo libera-lo
+- Circular wait: Precisa existir uma fila circular, onde cada processo espera u recurso do membro a frete
+
+#### Modelagem de deadlock
+
+Podemos ilustrar um deadlock como um grafo dirigido, onde:
+
+- Vertices redondos são processos
+- Vertices quadrados são recursos
+- Um arco recurso->processo significa que o recurso foi requisitado, concedido e esta em posse do processo
+- Um arco processo->recurso diz que os processo esta bloquado esperando por tal recurso
+
+Um deadlock é simplesmente um ciclo.
+
+### Algoritmo do avestruz
+
+Maneira mais simples de lidar com deadlocks, fingir que não existe nenhum deadlock. Um exemplo muito comum de deadlocks que poderiam acontecer mais são muito raros são os que podem acontecer por tamanho de tabelas (tabela de processos ou de arquivos). Imagine que a tabela de processos tenha so 100 posições livres, imagine tambem que temos 10 processos rodando e cada um vai dar fork em outros 12. Quando cada processo tiver dado fork em 9 processos a nossa tabela estara cheia, e todos os processos estarao em deadlock. Mas devemos mesmo nos preocupar com esse caso??
+
+### Detection and recovery
+
+Com essa tecnica para lidar com deadlocks, mantemos o grafo de alocação de recursos, assim, toda vez que um processo pede/libera um recurso, atualizamos o grafo. Caso haja algum ciclo no grafo (deadlock) simplesmente matamos um dos processos que o compoem, caso o ciclo continue, matamos outro processo, repetindo isso ate que o ciclo deixe de existir.
+
+Isso é normalmente feito em sistemas BATCH, quando matar e reinicializar um processo é aceitavel.
+
+### Deadlock prevention
+
+Essa solução proprõe estabeler restrições nos processos para impedir os deadlocks, ou seja, impedir uma das 4 condições acima de aconterem.
+
+- Impedindo exclusão mutua. Poderiamos fazer com que nenhum recurso fosse alocado para somente um processo, ou seja, poderamos fazer *spooling* para todos os recursos. Isso não funciona muito bem.
+
+- Impedindo hold and wait. Poderiamos impedir que um processo peça recursos no meio de sua execução e fazer com que ele declare todos os recursos que vai utilizar logo de inicio, assim poderiamos fazer um escalonamento previo, mas isso não funciona quando temos processos não deterministicos. Uma outra tentativa para acabar com essa condição é fazer que o processo libere temporiareamente todos os recursos alocados por ele ao pedir novos recursos.
+
+- Impedir a não-preepção. Tirar os recursos, mesmo que isso não gere resultados satifatorios.
+
+- Impedir a fila circular. Tentar achar uma numeração topologica para a execução do grafo.
+
+### Deadlock avoidance
+
+Agora vamos ver jeitos de impedir deadlocks com uma alocação sabia e segura de recursos, considerando que vamos ter algumas informações de cada processo.
+
+#### Algoritimo do banqueiro
+
+Definimos um estado como a quantidade de cada recurso que um processo tem e quer, assim como a quantidade livre de cada recurso. Assim podemos ter uma tabela, onde cada linha é um processo e cada coluna representa um recurso, alem de um vetor dizendo os recursos disponiveis.
+
+Um estado é **seguro** se podemos executar os processos em uma ordem tal que tudo seja satisfeito e respeitado.
+
+Assim, podemos ter um processo P1 que tem 2 recursos A e 1 recuros B, e que ainda precisa de 4 do recurso B. Ademais podemos dizer que existem 3 recursos A disponiveis e 8 recursos B disponivel. Esse estado seria seguro, pois P pode ser executado.
+
+A execução do algoritmo fica a seguinte:
+
+1. Procura por uma linha/processo P ainda não executado, tal que a qauntidade exigida de cada recurso seja menor que a disponivel. Caso esse processo não exista, temos um deadlock.
+2. Executo o processo P e acrescento os recursos que estavam sendo usados por ele nos recursos disponiveis.
+3. Repito 1 e 2 ate que todos os processos sejam executados.
+
+## Visão geral de IO no MINIX
+
+### Interrupt handlers e acesso IO no MINIX
+
+Muitos drivers de dispostivos inicializam o dispositivo de IO e então se bloqueiam, esperando ate que uma mensagem chegue, essa mensagem é enviada pelo **interrupt handler**.
+
+Temos 4 diferentes niveis de acesso que um *user-space device driver* pode querer.
+
+- Um driver pode precisar de acesso a memoria que nao esta em seu espaço. Por exemplo, o driver de memoria ram
+- Um driver pode precisar ler/escrever nas portas de IO, uma operação que so o kernel pode fazer
+- Um driver pode ter que responder a uma interrupção prevista.
+- Um driver pode ter que responder a uma interrupção não prevista
+
+Todos esses casos são suportados por kernel calls providas pelo systask.
+
+### Drivers de dispositvos no MINIX
+
+Para cada classe de dispositivos IO temos um device driver separado, que são processos. Tais drivers se comunicam com o sistema de arquivos atravez do sistema padrão de envio de mensagens.
+
+No MINIX, para um processo ler um arquivo, ele manda uma mensagem para o processo do sistema de arquivos. O FS entao manda uma mensagem para o *disk driver*. o DD então usa kernel calls para pedir ao systask que faça a verdadeira IO e copiar os dados entre os processos.
+
+Todos os drivers do MINIX funcionam da mesma maneira: recebendo mensagens. Para os dispotivos de bloco, temos, normalmente, os seguintes parametros na mensagem:
+
+- m_type : operação requisitada
+- DEVICE : minor device number
+- PROC_NR : processo requisitando IO
+- COUNT : contagem de bytes
+- POSITION : posição no dispositivo
+
+No UNIX, todos os processos tem 2 partes, uma parte do kernel e outra do user-space. Logo, os *device drivers* são apenas procedimentos no kernel que são invocados pela *kernel-space part* do processo.
+
+### Device-independent IO software in MINIX
+
+O processo do file system contem todo o codigo de *device independent IO*. Alem de lidar com a interface entre drivers, buffering e alocação de blocos, o FS tambem lida com a segurança e manutenção dos i-nodes, diretorios e _mounted file systems_.
+
+### User-level IO software in MINIX
+
+O MINIX tem todas os procedimentos de biblioteca requeridos pelo padrao POSIX. O *spooler deamon* é o **LPD**, que coloca um arquivo no spool de impressão atravez do comando `lp`.
+
+### Deadlock handling in MINIX
+
+O MINIX segue a mesma filosofia do UNIX com respeito ao tratamento de deadlocks: ele so ignora.
+
+## Dispositivos de blocos no MINIX
+
+Vamos discutir o RAM disk, hard disk e floppy disk.
+
+### Visão geral de *block device drivers* no MINIX
+
+O MINIX sempre tem 2 *block device drivers* compilados no sistema: o RAM disk driver e hard/floppy disk driver. O driver para cada dispositivo é compilado separadamente, mas uma biblioteca comum de codigo fonte é compartilhada entre eles.
+
+Um driver contem uma função com um loop infinito, que fica checando se uma mensagem chegou.
+
+Temos 6 operações que podem ser requisitadas á qualquer device driver, elas ficam no campos **m_type** da mensagem:
+
+| operação | Descrição
+| --- | ---- |
+| OPEN | Verifica se o dispositivo esta acessivel |
+| CLOSE | Verifica se não há nada em algum buffer para ser feito no dispositivo |
+| READ | Pega um bloco do device e coloca na memoria |
+| WRITE | Pega um blcoo da memoria e coloca no device |
+| IOCTL | Usado para pegar/mudar informações acerca do device |
+
+### Common block device driver software
+
+Definições que são utilizadas por todos os driver ficam em `drivers/libdriver/driver.h`.
+
+## RAM disks
+
+Vamos estudar em detalhes o memory driver, que é usado para permitir acesso a qualquer parte da memoria.
+
+### RAM disk hardware e software
+
+O RAM disk tem basicamente duas funções: escreve um bloco e lê um bloco.
+
+Em um sistema que tem suporte a **mounted files systems** temos um **dispositivo raiz** que esta sempre presente na mesma localização. Assim, sistemas de arquivos removiveis podem ser montados na arvore de arquivos, formando um sistema de arquivos integrado. Assim o usuario não precisa se preocupar em qual dispositivo esta cada arquivo.
+
+## Discos
+
+Todos os computadores modernos, execetos sistemas embarcados, possuem *disk drivers*.
+
+### RAID
+
+Acronomo de **redundant array of independent disks**. Uma maneira de implementar paralelismo no disk IO. Nesse sistema, temos que varios discos são conectados em paralelos e gerenciados por um **RAID controller**, assim, a sessão 0 fica com o disco 0, a sessão 1 fica com o disco 1 e assim por diante. Quanto escrevemos um arquivo, cada parte dele sera escrita em um disco diferente, de maneira simultanea.
+
+Ao ler um arquivo, o driver fica resposavel por colocar os pedaçoes em order para formar o arquivo correto, chamamos isso de **striping**.
+
+Poderiamos implemetar o *RAID level 1* e fazer com que aja 100% de redundancia, assim, caso um disco falhe, temos outro.
+
+## Terminals
+
+NÂO RESUMI
+
+# Memory management (MM)
+
+Nos computadores temos uma **hierarquia de memoria**. A memoria cache é a mais rapida, mas a mais escassa. A memoria RAM é rapida e consiguimos ter alguns gbs dela. E armazenamos no disco centanas de GB que são acessados e forma lenta.
+
+O **memory manager** cuida dessa hierarquia. Em muitos sistemas (mas não no MINIX), ele faz parte do kenrel.
+
+## Basic memory management
+
+Podemos dividir os sistemas de MM em 2 tipos:
+
+- sistemas que movem processos entre a memoria principal e o disco durante a execução, **swapping and paging**
+- sistemas que não fazem o que esta acima
+
+### Monoprogramming without Swapping or Paging
+
+O jeito mais simples de MM é executar apenas um programa/processo por vez, fazendo com que a memoria seja compartilhada entre esse programa e o SO. Temos 3 esquemas principais de fazer isso:
+
+- Colocar o SO no inicio da RAM e o programa no que sobrar. Usado por mainframes antigamente
+- Colocar o SO na memoria ROM e o programa na RAM. Usado em alguns sistemas embarcados
+- Colocar o SO e o programa na RAM e os device drivers na ROM. Usado no inicio da computação, a parte que ficava na ROM era chamada de **BIOS**.
+
+### Multiprogramming with Fixed Partitions
+
+O jeito mais facil de fazer MM quando temos multi processos é simplesmente dividir a memoria em *n* partições, com tamanhos possivelmente diferetes. Uma solução pra a criação dessas partições seria criar varias delas, com tamanhos difentes, assim que o sistema é iniciado, chamado **MFT**, Multiprogramming with a Fixed number.
+
+Nesse modelo apresentado acima, as partições possuem tamanho fixo. Um jeito de alocar uma partição para um processo seria colocar ele em uma fila na menor partição que pode armazena-lo. Outra alternativa seria termos uma fila unica, onde um proceso pode ser colocado na primeira partição livre que tiver espaço para ele. Em ambos os casos temos desperdicio de espaço.
+
+### Relocation and protection
+
+Com a solução acima, sabemos que diferentes processos vão estar em diferentes regiões da memoria. Como fazer com que programas/bibliotecas linkados a esse processo saibam o endereço e consigam acessar os dados de maneira correta? Ademais, como garantir que um processo não acesse o espaço de memoria de outro?
+
+A solução para isso foi fazer com que a maquina tivesse mais dois registradores, **base** e **limit**. Quando um processo é escalonado, o registrador base recebe o inicio do endereço de memoria desse processo, e o limit recebe o final. Assim, bibliotecas conseguem se limitar a aquele espaço de memoria usando algebra simples, e a segurança é garantida vendo se o acesso foi entre esses dois limites.
+
+## Swapping
+
+Nos sistemas modernos, nem todos os processos cabem na memoria principal no mesmo momento, logo, alguns processos precisam ser guardados em disco e trazidos para a memoria quando necessarios.
+
+A estrategia mais simples para lidar com isso é o **swapping**, que implica transferirmos o processo inteiro entre a memoria principal e o disco. Para esse metodo, um sistema de **partição dinamica**, onde as partições não tem um tamanho fixo desde o inicio do sistema, seus tamanhos vão sendo alterados durante a execução.
+
+O fato acima, sem duvida, aumenta a eficiencia da memoria, causando menos desperdicio. Outra coisa que podemos fazer é a **memory compaction**, fazendo com que todas a partições fiquem *juntinhas*, mas isso não é geralemnte feito pois usa muita CPU.
+
+Quando temos processos que podem aumentar o tamanho de memoria alocada durante sua execução, é uma boa pratica, ao trazer o processo do disco para a memoria, deixar um espaço extra entre esse processo e outro, para que, se tal processo deseje aumentar de tamanho, ele não tenha que esperar.
+
+### Memory management with bitmaps
+
+Uma necessidade é saber, de maneira rapida, quais partes da memoria estão livres. Em um **bitmap** cada bit ira representar uma porção de memoria, 0 esta vazio e 1 esta ocupada. O problema é decidir o tamanho da porção representada. Se 1 bit representar uma porção muito pequena, nosso bitmap vai ficar muito grande. Se 1 bit representar uma porção muito grande, podemos perder precisão.
+
+Quando se deseja trazer um processo que tem tamanho de *k-porções*, o MM vai procurar no bitmap por uma sequencia de *k* zeros, posições vazias da memoria que podem armazenar o processo.
+
+### Memory management with linked lists
+
+Uma outra maneira de resolver o problema das partes da memoria que estão livres é usar uma lista ligada. Tal lista tem os nos **process (P)** e **hole (H)**. Cada nó especifica o inicio de uma região na memoria, o seu tamanho e o proximo item da lista. Um exemplo de tal lista seria:
+
+`P[0, 5, ->] -> H[5, 1, ->] -> P[6, 10, -]`
+
+No exemplo acima, a fila esta ordenada por order de inicio de endereço. Essa ordenação, alem de ser facil de ser mantida, facilita o processo de alocar ou desalocar memoria. Com isso, podemos ter os seguintes algoritmos para alocação de memoria:
+
+- **first fit**: percorre a lista ligada desde o começo ate achar uma posição vazia que tem capacidade para receber o novo processo. O hole é quebrado em 2 novos nos, um processo e um novo buraco (menor). É rapido pois acaba assim que acha
+- **next fit**: mesma coisa que o de cima, mas começa a busca a partir do ultimo ponto de parada. É pior.
+- **best fit**: percorre a lista inteira e tenta achar o menor buraco que pode armazenar o processo. Além de demorar mais, não apresenta ganho no proveito de memoria, pois deixa pedaços muito pequenos vazios, que não poderão ser usados por outros processos.
+- **worst fit**: acha o maior buraco, para tentar solucionar o problema do de cima. Mas tambem não é bom.
+- **quick**: cria um vetor com varios tamanhos de buracos, uma posição desse vetor vai conter a cabeça de uma lista ligada que vai armazenar todos os buracos com aquele dado tamanho. É muito rapido para achar um novo buraco, mas extremamente ruim para desalocar.
+
+## Virtual memory
+
+Em um certo momento começaram a aparecer programas tão grandes que eles não cabiam na memoria. A solução adotada em dividir o programa em pedaços, chamados **overlays**. Dessa maneira, a primeira overlay começava a ser executada, depois outra, ate que o programa terminasse. As overlays eram mantidas no disco e trazidas de maneira dinamica para a memoria, pelo SO. Quem dividia o programa em pedaços era o proprio programador.
+
+O trabalho do programador de dividir o programa chegou ao fim ao a **memoria virtual**. Com ela, o disco pode ser visto como a extensão da memoria RAM, e o programa e divido entre esses dois recursos, com a parte mais usada ficando na memoria principal.
+
+### Paging
+
+Tecnica usada por sistemas de memoria virtual. Em qualquer computador existe conjunto de endereços de memoria que programas podem gerar. Por exemplo, a operação `MOV REG,1000` move o conteudo do endereço de memoria 1000 para REG.
+
+Esses endereços gerados pelos programas são os **virtual addresses** e formam o **virtual address space**. Em computadores sem memoria virtual, esse endereço é traduzido diretamente para a memoria RAM. Quando usamos a memoria virtual, esse endereço vai para o **MMU (memory management unity)**, que mapeia esse endereço para as duas opções de memoria fisica (RAM e disco).
+
+O espaço da memoria virtual é dividido em **paginas**, e suas representações na memoria fisica são chamadas **page frames**, ambas tem o mesmo tamanho. Quando tranferencias são realizadas entre a RAM e o disco sempre se tranfere uma pagina inteira.
+
+O numero de _paginas_ é sempre maior que o numero de _page frames_, então, existe um **present/absent bit**, presente no hardware, que diz se aquela esta presente ou não na memoria fisica.
+
+Quando um programa tenta acessar uma pagina que o MMU não mapeou o MMU faz com que a CPU faça uma *trap* no SO, chamada de **page fault**. O SO então pega uma page frame que não foi muito usada, coloca ela de volta no disco e muda o mapeamento para que a pagina que ainda não mapeada se refencie para essa nova page frame livre. Dai então a trap e retirada e a operação reinciada.
+
+Para realizar esse mapeamento, o MMU usa a **page table**, assim, os primeiros indices de um endereço passado para o MMU representam um indice na tabela. Esse indice, ao ser acessado, possui o *p/a bit* e o endereço para o page frame. O restante dos bits do enreço de entrada é chamado de **offset** e é passado para complementar o endereço final.
+
+Um exemplo, podemos dividir o endereço de entrada em X+K (XXXXKKKKKKK). Acessamos o indice X da tabela e pegamos o valor Y. O endereço que sai do MMU é o Y+K (YYKKKKKKK).
+
+### Page tables
+
+O jeito mais simples de mapearmos memoria virtual para memoria fisica é fazer o que descrevemos acima. O endereço virtual é dividido em um **vitual page number (high order bits)** e um **offset (low order bits)**. Por exemplo, com endereços de 16-bits e uma pagina de 4KB (a pagina precisa ter o tamanho de 2^|offset|. Aqui é 4096 == 2^12), poderiamos usar os 4 primeiros bits do endereço como VPN para uma das 16 paginas e outros 12bits especificariam o offset (0 ate 4095) na pagina selecionada.
+
+Temos dois principais desafios: a tabela de paginas pode ser grande e o mapeamento precisa ser rapido. O jeito mais simples de montar a tabela é fazer uma tabela unica. Porem, a seguir, veremos dois metodos mais robustos.
+
+#### Multilevel page tables
+
+Para nos livrarmos do problema de precisarmos ter a _page table_ (PT) completa  na memoria, podemos criar mais um nivel. Assim, um _virtual adress_ de 32bits pode ser dividido em **10bit PT1 adress**, um **10bit PT2 adress** e um **12bit offseet**. Assim usamos o endereço de PT1 para acessar PT2, e PT2 para acessar a posição na memoria fisica. Note que todas as possiveis PT2 não precisam ficar na memoria principal.
+
+#### Estrutura de uma entrada na page table
+
+O principal campo é o **page frame number**, ate porque esse é todo o objetivo de termos PTs. Em seguida tempos o **present/absent bit** (1-entrada é valida e pode ser usada | 0-a pagina virtual não esta atualmente na memoria). Temos o **protection bit** (rwx). Temos um **modified/referenced bit**, que avisa se aquela pagina foi modificada, pois isso significa que sua versão no disco deve ser modificada. O ultimo bit avisa se o cache deve ou não ser habilitado.
+
+### TLB - Translation lookaside buffers
+
+Foi percebido que os processos costumam fazer uma grande quantidade de referencias para uma pequena quantidade de paginas. Sabendo disso, foi criado um novo buffer no hardware que serve como um _cache_ para a memoria virtual, onde acessos podem ser feitos de forma mais rapidas. É uma especie de mapeamento direto, onde a tabela possui pouquissimas entradas.
+
+## Page replacement algorithms
+
+Quando uma _page fault_ acontece o sistema operacional precisa escolher uma pagina pra ser retirada da memoria e assim conseguir espaço para a pagina que precisa ser acessada. Se a pagina escolhida para ser retirada foi modificada enquanto estava na memoria, sua versão no disco precisa ser atualizada. Caso contrario, basta sobrecreve-la.
+
+### Algoritmo otimo para page replacement
+
+O algoritmo otimo é facil de ser descrito e impossivel de ser implementado. O algoritmo funciona da seguinte maneira:
+
+Quando uma _page fault_ acontece, algum conjunto de paginas estão na memoria. Poderiamos entiquetar cada uma dessas paginas com o numero de execuções que irão acontecer em seguida que não usarão tal pagina. O algoritmo perfeito, removeria a pagina que vai demorar mais tempo ate ser usada, ou seja, a pagina com a maior etiqueta.
+
+### The Not Recently Used Page Replacement Algorithm
+
+A maioria dos computadores com memoria virtual possuem 2 bits associados a cada pagina. O bit `R` é ligado toda vez que uma pagina é referenciada (lida ou escrita) e `M` é ligado toda vez que a pagina é modificada. Se o hardware não possui esses bits, é possivel que eles sejam emulados pelo SO.
+
+O algoritmo que utiliza os bits R e M é descrito a seguir:
+
+Quando um processo é inicializado, todos os bits RM de suas paginas são setados como 0. Periodicamente o bit R e resetado para distiguirmos os processos que foram referenciados mais recentemente. Quando uma _page fault_ acontece, o SO inspeciona todas as peginas e as classifica em 4 classes, de acordo com os bits RM:
+
+- classe 0: não referenciado, não modificado
+- classe 1: não referenciado, modificado
+- classe 2: referenciado, não modificado
+- classe 3: referenciado, modificado
+
+O algoritmo então, escolhe uma pagina aleatoria, da classe mais baixa (mais proxima de 0) não vazia. O algoritmo não é top, mas é consideravelmente eficiente e de facil implementação.
+
+### The First-In, First-Out (FIFO) Page Replacement Algorithm
+
+O SO mantem uma lista de todas as paginas na memoria, onde a pegina na frente da lista é a mais velha e a que esta no fim da fila é a mais nova. Quando uma _page fault acontece_ a pagina mais velha é removida para dar espaço. Facil de implementar mas não muito bom.
+
+### The Second Chance Page Replacement Algorithm
+
+Uma alternativa para a algoritmo FIFO, que evita que paginas muito acessadas sejam retiradas da memoria é dada a seguir. Da mesma maneira acima, queremos remover o processo mais antigo, porem, checamos se o seu bit R (diz se o processo foi referenciado recentemente) esta ligado. Caso positivo, esse bit é desligado e a pagina é colocada no fim da fila, como se tivesse acabado de entrar, e então a busca continua. Caso negativo, basta retirarmos essa pagina velha que esta com o bit R desligado.
+
+Desligarmos o bit R quando colocamos uma pagina de volta na fila garante que o algoritmo vai acabar.
+
+### The Clock Page Replacement Algorithm
+
+Similar ao algoritmo acima, porem, a implementação utiliza uma lista circular e um ponteiro aponta a pagina mais velha.
+
+### The Least Recently Used (LRU) Page Replacement Algorithm
+
+É a melhor aproximação do algoritmo otimo. Esse algoritmo consiste na observação de que paginas que foram muito acessadas nas ultimas instruções provavelmente vão continuar sendo muito acessadas. E como consequencia, as paginas pouco acessadas vão continuar assim. A ideia se resume em: quando uma _page fault_ acontece, jogamos fora a pagina que não foi usada por mais tempo.
+
+Esse algoritmo é muito custoso, pois toda vez que uma pagina é referenciada, precisamos atualizar o seu tempo de ultimo acesso, e para fazermos isso precisamos percorrer a lista.
+
+Entretanto, podemos fazer implementações eficientes com auxilio do hardware.
+
+A primeira solução é equipar um contador C no hardware, que é incrementado toda vez que uma instrução é feita. Assim, quando uma pagina é referenciada, basta guardarmos nela o valor atual de C. Assim, basta descobrirmos a pagina com o menor valor de C e retirarmos ela.
+
+Outra maneira é a seguinte: se temos N page frames, vamos manter uma matriz NxN. Quando uma page frame K é referenciada, colocamos todos os bits da k-esima linha como 1 e todos os bits da k-esima coluna como 0. Em qualquer instante, a linha com o menor valor binario é a menos usada.
+
+### Simulando LRU em software
+
+Muitas maquinas não possuem os artefatos acima. Devido a isso, precisamos recorrer para alternativas em software.
+
+Uma das soluções é o algoritmo **NFU (not frequently used**). Cada pagina tem um contador, inicizalidao com 0. A cada _clock interrupt_ o SO passa por todas as paginas e incrementa R no contador. Com isso, retiramos da memoria a pagina com o menor contador.
+
+## Design issues for paging systems
+
+### The working set model
+
+Processos são iniciados com nenhuma de suas paginas na memoria. Conforme ele vai sendo executado, tudo o que ele precisa vai indo para a memoria e cada vez menos _page faults_ vão acontecendo. Isso é chamado de **demand paging**, pois as paginas são carregadas _on demand_.
+
+Muitos processos aprensentam **locality of reference**, ou seja, durante alguma fase de execução o processo vai referenciar apenas uma pequena porção de suas paginas.
+
+O conjunto de paginas que estão sendo utilizadas por um processo são chamadas de **working set**. Se todo o working set esta na memoria, poucas page fault irão acontecer. Se a memoria for muito pequena e não armazenar grande parte do working set, vão acontecer muitas page faults, quando isso acontece com muita frequencia, dizemos que o processo esta **thrashing**.
+
+Num sistema de multiprogramação, o principal problema surge quando trazemos um processo de volta para a memoria principal. Com esse ato, muitas _page fault_ irão acontecer. Com isso, muitos sistemas de paginamento trazem de volta algumas paginas associadas ao processo, quando este esta sendo carregado na memoria. Isso evita _demand paging_ e é chamado de **prepagin/working set model**.
+
+### Local versus global allocation policies
+
+Acima, quando discutimos algoritmos de alocação de memoria, pulamos um detalhe: devemos retirar uma pagina do mesmo processo ou de qualquer processo no sistema?
+
+Dizemos que o algoritmo de _page replacement_ é **local** se ele so remove paginas do mesmo processo. Isso corresponde a alocar um tamanho fixo de memoria para cada processo.
+
+Já um algoritmo **global** pode retirar uma pagina de qualquer outro processo. Isso faz com que a quantidade de memoria usada por cada processo passe a ser dinamica.
+
+Em geral, algoritmos globais funcionam melhor.
+
+### Virtual memory interface
+
+Podemos fazer com que o programador tenha acesso ao MMU. Dessa meneira pode se fazer com que processos compartilhem regiões de memoria. Com isso, alem das aplicações basicas, pode se implementar um sistema rapido para passagem de mensagens.
+
+## Segmentation
+
+Ideia para que um processo organize seu espaço de memoria. Assim, ele pode ter segmentos, que é constituido por uma sequencia continua de endereços, que podem variar de tamanho de maneira independente. Essa estruta é definida e esta visivel para o programador. É como se estivessemos criando _pseudo virtual adresses_ dentro da execução do programa.
+
+Organizar a memoria em segmentos tambem facilita com que haja compartilhamento de memoria entre processos.
+
+Um segmento tambem pode apresentar uma proteção especifica, ou seja, podemos dizer que um segmento so pode ser executado e que não pode ser modificado. Isso não faz sentido de ser feito na memoria virtual, uma vez que o programador não tem ciencia de como as paginas estão sendo criadas e mantidas.
+
+Comparação entre paging e segmentação
+
+| Consideração | Paging | Segmentation |
+| --- | --- | --- |
+| Need the programmer be aware that this technique is being used? | NO | YES |
+| How many linear address spaces are there? | 1 | MANY  |
+| Can the total address space exceed the size of physical memory? | YES | YES |
+| Can procedures and data be distinguished and separately protected?  | NO | YES |
+| Can tables whose size fluctuates be accommodated easily? | NO | YES |
+| Is sharing of procedures between users facilitated? | NO | YES |
+| Why was this technique invented? | To get a large linear address space without having to buy more physical memory | To allow programs and data to be broken up into logically independent address spaces and to aid sharing and protection |
+
+### Implementation of pure segmentation
+
+A implementação de segmentos difere da implementação de paginação na seguinte maneira: paginas tem tamanho fixo, segmentos não. Com a aumento/diminuição dos segmentos, vamos criando buracos na memoria, esse fenomeno é chamado de **checkerboarding** ou **external fragmentation**. A solução para isso é realizar compactação.
+
+### Segmentation with Paging: The Intel Pentium
+
+O pentiu pode ser setado pelo SO para usar so segmentação, so paginação ou ambos. O coração disso esta em duas tabelas, **LDT (local descriptor table)** e **GDT (global descriptor table)**. Cada programa tem sua propria LDT, mas so existe uma GDT compartilhada por todos os programas. A LDT descreve os segmentos locais de cada programa e a GDT descreve segmentos do sistema em si.
+
+# File systems
+
+Quando um processo so armazena informação na memoria temos 3 problemas:
+
+- O espaço na memoria é limitado, não se pode guardar arquivos muito grandes
+- Quando o processo acaba, toda a informação é perdida
+- As vezes é necessario que multiplos processos tenham acesso a informação
+
+A solução para esses problemas é transformar essas informações em **arquivos** e guarda-las nos discos ou em algum dispositivo externo.
+
+Chamos de **file system (FS)** a parte do sistema operacional que gerencia tais arquivos.
+
+## Arquivos
+
+### File naming
+
+Arquivos são um mecanismo de abstração, uma maneira de ler/escrever informações no disco.
