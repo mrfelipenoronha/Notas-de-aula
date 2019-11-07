@@ -93,6 +93,39 @@
    - [Implementação](#implementação)   
 - [Algoritmo de Kruskal](#algoritmo-de-kruskal)   
    - [Implementação](#implementação)   
+- [Caminhos baratos](#caminhos-baratos)   
+   - [Caminhos de custo mínimo](#caminhos-de-custo-mínimo)   
+   - [Potencial viável e relaxação](#potencial-viável-e-relaxação)   
+   - [Árvore de caminhos mínimos (SPT)](#árvore-de-caminhos-mínimos-spt)   
+   - [Caminhos de custo mínimo em DAGs](#caminhos-de-custo-mínimo-em-dags)   
+   - [Algoritmo de Dijkstra](#algoritmo-de-dijkstra)   
+      - [O algoritmo](#o-algoritmo)   
+      - [Prova de correção do algoritmo](#prova-de-correção-do-algoritmo)   
+      - [Implementação](#implementação)   
+- [Fluxo em redes](#fluxo-em-redes)   
+   - [Fluxo](#fluxo)   
+   - [Fluxo versus coleção de caminhos](#fluxo-versus-coleção-de-caminhos)   
+   - [O problema do fluxo máximo](#o-problema-do-fluxo-máximo)   
+   - [O algoritmo de ford-fulkerson](#o-algoritmo-de-ford-fulkerson)   
+      - [Pseudocaminhos](#pseudocaminhos)   
+      - [Pseudocaminhos aumentadores](#pseudocaminhos-aumentadores)   
+      - [Capacidade residual de um pseudocaminho](#capacidade-residual-de-um-pseudocaminho)   
+      - [O algoritmo de Ford-Fulkerson](#o-algoritmo-de-ford-fulkerson)   
+      - [Desempenho do algoritmo](#desempenho-do-algoritmo)   
+   - [Teorema: Fluxo maximo e corte minimo](#teorema-fluxo-maximo-e-corte-minimo)   
+      - [Saldo de fluxo num conjunto de vértices](#saldo-de-fluxo-num-conjunto-de-vértices)   
+      - [Cortes e sua capacidade](#cortes-e-sua-capacidade)   
+      - [Cortes limitam fluxo](#cortes-limitam-fluxo)   
+      - [Análise do algoritmo de Ford-Fulkerson](#análise-do-algoritmo-de-ford-fulkerson)   
+   - [Implementação do algoritmo de Ford-Fulkerson](#implementação-do-algoritmo-de-ford-fulkerson)   
+      - [Estrutura de dados: nós expandidos](#estrutura-de-dados-nós-expandidos)   
+      - [Arcos artificiais](#arcos-artificiais)   
+      - [Caminhos aumentadores e capacidades residuais](#caminhos-aumentadores-e-capacidades-residuais)   
+      - [Camada externa da implementação do algoritmo](#camada-externa-da-implementação-do-algoritmo)   
+   - [Cálculo de um caminho aumentador mínimo](#cálculo-de-um-caminho-aumentador-mínimo)   
+      - [Número de iterações do algoritmo do fluxo máximo](#número-de-iterações-do-algoritmo-do-fluxo-máximo)   
+   - [Caminho aumentador de máxima capacidade residua](#caminho-aumentador-de-máxima-capacidade-residua)   
+      - [Número de iterações do algoritmo de fluxo máximo](#número-de-iterações-do-algoritmo-de-fluxo-máximo)   
 
 <!-- /MDTOC -->
 
@@ -1760,3 +1793,511 @@ static void UGRAPHedges( UGraph G, edge e[])
 ```
 
 **Consumo de tempo**: `(E + V) log V`.
+
+# Caminhos baratos
+
+## Caminhos de custo mínimo
+
+Num grafo com custos nos arcos, o custo de um caminho é a soma dos custos dos arcos do caminho.
+
+Um caminho B é mais barato que um caminho C se tiver custo menor que o de C. Dizemos que um caminho C  tem **custo mínimo** se nenhum caminho com a mesma origem e o mesmo término de C é mais barato que C.
+
+Problema do caminho mínimo sob custos positivos:  Dados vértices s e t de um grafo com custos positivos nos arcos, encontrar um caminho mínimo de s a t. Se não houver caminho algum de s a t, o problema não tem solução.
+
+A **distância** de um vértice s a um vértice t é o custo de um caminho mínimo com origem s e término t.
+
+## Potencial viável e relaxação
+
+Para provar que um dado caminho C tem custo mínimo, precisamos mostrar que qualquer caminho com a mesma origem e o mesmo término que os de C é pelo menos tão caro quanto C.
+
+Dado um grafo G com custos positivos nos arcos, um **potencial** é um vetor de números indexado pelos vértices de G. Dizemos que um arco v-w está relaxado em relação a um potencial h[] se
+
+`h[v] + cvw  ≥  h[w]`,
+
+sendo cvw o custo do arco.  Dizemos que um potencial h[ ] é viável se todos os arcos do grafo estão relaxados em relação a h[ ].
+
+Se s é um vértice de G e d[v] é a distância de s a v para cada v então d[ ] é um potencial viável.
+
+**Certificado de minimalidade**: Num grafo G com custos positivos nos arcos, como é possível provar que o custo de um dado caminho é mínimo? Suponha que h[ ] é um potencial viável em G. É fácil verificar que para qualquer caminho C de um vértice s a um vértice t tem-se
+
+`h[s] + cC  ≥  h[t]`,
+
+sendo cC o custo do caminho C. Portanto, cC ≥ h[t] − h[s]. Conclusão: qualquer caminho de s a t é pelo menos tão caro quanto a diferença de potencial entre t e s.
+
+Segue daí que qualquer caminho C de s a t que satisfaz a igualdade `cC = h[t] − h[s]` tem custo mínimo! Nessas condições, h[ ] torna-se um certificado de minimalidade do caminho C.
+
+## Árvore de caminhos mínimos (SPT)
+
+Uma árvore de caminhos mínimos, ou SPT (shortest paths tree), é uma árvore radicada T em G, com raiz s, tal que
+
+- todo vértice ao alcance de s em G pertence a T e
+- todo caminho em T que começa em s é um caminho mínimo em G.
+
+**Problema da SPT sob custos positivos**: Dado um vértice s de um grafo com custos positivos nos arcos, encontrar uma SPT com raiz s no grafo.
+
+Dada uma árvore radicada T, como podemos verificar se T é uma SPT? Digamos que s é a raiz de T. Para cada vértice v de T, seja x[v] o custo do único caminho de s a v em T. Para cada vértice z fora de T, faça x[z] = M, onde M é um número maior que o custo de qualquer caminho simples em G.  Se o vetor x[ ] deixa todos os arcos de G relaxados, então T é uma SPT (veja o certificado de minimalidade acima).  Senão, a desigualdade triangular é violada e portanto T não é uma SPT.
+
+## Caminhos de custo mínimo em DAGs
+
+**Problema do caminho mínimo em dags**: Dada uma permutação topológica e um vértice s de um grafo G com custos positivos nos arcos, encontrar uma SPT com raiz s em G.
+
+A função DAGspt() abaixo produz uma SPT com raiz s e um vetor das distâncias em G a partir de s.  A distância de s a vértices fora do alcance de s será representada pela constante INFINITY, de valor maior que o custo de qualquer caminho. A função recebe uma permutação topológica vv[0..V-1] de G e processa os vértices em ordem: primeiro vv[0], depois vv[1], depois vv[2], etc.
+
+```c
+#define Dag Graph
+
+/* A função recebe um dag G com custos nos arcos, uma permutação
+topológica vv[] de G, e um vértice s de G. A função armazena no vetor de
+pais pa[] uma SPT com raiz s. Se um vértice v não está ao alcance de s,
+teremos pa[v] == -1. As distâncias a partir de s são armazenadas no vetor
+dist[]. Os vetores pa[0..V-1] e dist[0..V-1] devem ser alocados pelo usuário */
+void DAGspt( Dag G, vertex *vv, vertex s, vertex *pa, int *dist) {
+   for (vertex v = 0; v < G->V; ++v)
+      pa[v] = -1, dist[v] = INFINITY;
+
+   pa[s] = s, dist[s] = 0;
+   for (int j = 0; j < G->V; ++j) {
+      vertex v = vv[j];
+      if (dist[v] == INFINITY) continue;
+      for (link a = G->adj[v]; a != NULL; a = a->next) {
+         if (dist[v] + a->cst < dist[a->w]) {
+            dist[a->w] = dist[v] + a->cst;
+            pa[a->w] = v;
+         }
+      }
+   }
+}
+```
+
+Para verificar que a função DAGspt() está correta, basta observar os seguintes invariantes: no início de cada iteração,
+
+1. para cada vértice v, se pa[v] ≠ -1 então dist[v] é o custo de algum caminho de s a v;
+2. todo arco x-y tal que x = vv[i] para algum i < j está relaxado em relação a dist[].
+
+
+O consumo de tempo de DAGspt() é proporcional a  V + A  no pior caso.
+
+## Algoritmo de Dijkstra
+
+### O algoritmo
+
+Dado um grafo G com custos positivos nos arcos, o algoritmo de Dijkstra faz crescer em G uma subárvore radicada a partir do vértice s até que ela englobe todos os vértices que estão ao alcance de s. Ao final, a subárvore torna-se uma SPT.
+
+Podemos agora descrever o algoritmo de Dijkstra.  O algoritmo é iterativo. Cada iteração começa com uma árvore radicada T com raiz s.  No começo da primeira iteração, s é o único vértice de T e dist[s] vale 0. O processo iterativo consiste no seguinte: enquanto a franja de T não estiver vazia,
+
+- escolha, na franja de T, um arco x-y que minimize dist[x] + cxy ,
+- acrescente o arco x-y e o vértice y a T ,
+- faça dist[y] = dist[x] + cxy .
+
+### Prova de correção do algoritmo
+
+Para provar que o algoritmo de Dijkstra resolve o problema da SPT em qualquer grafo G com custos positivos nos arcos é preciso observar que as seguintes propriedades são invariantes: no início de cada iteração,
+
+- para cada vértice v de T, dist[v] é o custo do único caminho de s a v em T,
+- todos os arcos de G que têm ambas as pontas em T estão relaxados em relação a dist[ ].
+
+### Implementação
+
+```c
+/* Recebe um grafo G com custos positivos nos arcos e um vértice s.
+Armazena no vetor de pais pa[] uma SPT de G com raiz s. Se um vértice v
+não está ao alcance de s, pa[v] valerá -1. As distâncias a partir de s
+são armazenadas no vetor dist[]. */
+
+void GRAPHsptD2( Graph G, vertex s, vertex *pa, int *dist)
+{
+   bool tree[1000];
+   // inicialização:
+   for (vertex v = 0; v < G->V; ++v)
+      pa[v] = -1, tree[v] = false, dist[v] = INFINITY;
+   pa[s] = s, tree[s] = true, dist[s] = 0;
+   for (link a = G->adj[s]; a != NULL; a = a->next)
+      pa[a->w] = s, dist[a->w] = a->cst;
+   PQinit( G->V);
+   for (vertex v = 0; v < G->V; ++v)
+      if (v != s) PQinsert( v, dist);
+
+   while (!PQempty( )) {
+      vertex y = PQdelmin( dist);
+      if (dist[y] == INFINITY) break;
+      tree[y] = true;
+      // atualização de dist[] e pa[]:
+      for (link a = G->adj[y]; a != NULL; a = a->next) {
+         if (true[a->w]) continue;
+         if (dist[y] + a->cst < dist[a->w]) {
+            dist[a->w] = dist[y] + a->cst;
+            PQdec( a->w, dist);
+            pa[a->w] = y;
+         }
+      }
+   }
+   PQfree( );
+}
+```
+
+# Fluxo em redes
+
+## Fluxo
+
+Suponha dada uma tabela `f` que associa um número positivo para cada arco de um grafo. O número que f associa com um arco v-w será denotado por **fvw** e chamado fluxo no arco v-w.
+
+Para qualquer vértice v do grafo, o **fluxo que entra** em v (inflow) é a soma dos fluxos nos arcos que entram em v. O **fluxo que sai** de v (outflow) é a soma dos fluxos nos arcos que saem de v. O **saldo de fluxo** (net flow) em v é a diferença `out(v) − in(v)` entre o fluxo que sai de v e o fluxo que entra em v.
+
+Um **fluxo** (flow) num grafo com vértice inicial s e vértice final t é uma tabela f que atribui números positivos aos arcos do grafo de tal modo que
+
+- o saldo de f é nulo em todo vértice diferente de s e de t (tudo que entra sai)
+- o saldo de f em s é positivo.
+
+A **intensidade** (flow value) de um fluxo f é o saldo de f no vértice inicial s.
+
+Como representar um fluxo?  Se o grafo é representado por listas de adjacência, poderíamos acrescentar um campo aos nós que representam os arcos. Se o grafo é representado por uma matriz de adjacências, podemos usar uma matriz f[][] definida da maneira óbvia: se v-w é um arco, então f[v][w] é o fluxo no arco; senão, f[v][w] é 0
+
+## Fluxo versus coleção de caminhos
+
+As seguintes ideias produzem uma imagem mental intuitiva de um fluxo e assim ajudam a compreender melhor o conceito.
+
+Todo fluxo por ser representado por uma coleção de caminhos. Cada caminho da coleção é simples, começa em s, termina em t, e conduz uma certa quantidade de fluxo. A soma das quantidades de fluxo conduzidas pelos vários caminhos é igual à intensidade do fluxo original.
+
+## O problema do fluxo máximo
+
+Uma **grafo capacitado** é um grafo com números positivos associados aos arcos. O número associado a um arco é conhecido como capacidade do arco. A capacidade de um arco v-w será denotada por cvw. Um grafo capacitado com vértice inicial e vértice final é às vezes chamado **rede** (network).
+
+Suponha que f é um fluxo num grafo capacitado com vértice inicial e vértice final. Dizemos que f respeita as capacidades se `fvw  ≤  cvw` para cada arco v-w.
+
+**Problema do fluxo máximo (maximum flow problem)**: Dado um grafo capacitado com vértice inicial e vértice final, encontrar um fluxo de intensidade máxima dentre os que respeitam as capacidades dos arcos.
+
+## O algoritmo de ford-fulkerson
+
+### Pseudocaminhos
+
+Um **pseudocaminho** num grafo é uma sequência de vértices dotada da seguinte propriedade: para cada par vw de vértices consecutivos, v–w é um arco do grafo ou w–v é um arco do grafo.
+
+No primeiro caso, dizemos que v–w é um **arco direto** (forward arc) do pseudocaminho. No segundo caso, dizemos que w–v é um **arco reverso** (backward arc) do pseudocaminho. Um pseudocaminho sem arcos reversos é um caminho.
+
+### Pseudocaminhos aumentadores
+
+Suponha dado um grafo capacitado e um fluxo que respeita as capacidades dos arcos. Dizemos que um arco v–w está cheio se o fluxo no arco é igual à capacidade do arco. Dizemos que um arco v–w está vazio se o fluxo no arco é nulo.
+
+Em relação a esse fluxo, um pseudocaminho é **aumentador** (augmenting) se vai do vértice inicial ao final do grafo e tem as seguintes propriedades:
+
+- nenhum arco direto do pseudocaminho está cheio e
+- nenhum arco reverso do pseudocaminho está vazio.
+
+Dado um pseudocaminho aumentador relativo a um fluxo f, a operação de enviar ε unidades de fluxo ao longo do pseudocaminho consiste em calcular um novo fluxo da seguinte maneira:
+
+para cada arco direto v–w do pseudocaminho, faça  fvw = fvw + ε, ou seja, some ε ao fluxo no arco, e
+para cada arco reverso w–v do pseudocaminho, faça  fwv = fwv − ε,  ou seja, subtraia ε do fluxo no arco.
+É fácil verificar que o resultado dessa operação é um fluxo.  Ademais, a operação acrescenta ε à intensidade do fluxo.
+
+### Capacidade residual de um pseudocaminho
+
+Suponha dado um grafo capacitado com vértice inicial e vértice final. Seja f um fluxo no grafo que respeita a capacidade c. Suponha dado um pseudocaminho aumentador relativo a f. A capacidade residual de um arco direto v–w do pseudocaminho é a diferença `cvw − fvw`, sendo cvw a capacidade e fvw o fluxo no arco v–w. A capacidade residual de um arco reverso w–v do pseudocaminho é fwv .
+
+A capacidade residual do pseudocaminho todo é a menor das capacidades residuais dos seus arcos.
+
+Digamos que δ é a capacidade residual de um pseudocaminho aumentador P e  ε  é um número entre 0 e δ.  Se enviarmos ε unidades de fluxo ao longo de P, produziremos um novo fluxo que respeita as capacidades dos arcos. A intensidade do novo fluxo será ε unidades maior que a intensidade do fluxo original.
+
+### O algoritmo de Ford-Fulkerson
+
+O algoritmo de Ford-Fulkerson, também conhecido como algoritmo dos pseudocaminhos aumentadores, resolve o problema do fluxo máximo. Cada iteração começa com um fluxo f que respeita as capacidades dos arcos. A primeira iteração começa com o fluxo nulo. O processo iterativo consiste no seguinte: enquanto existe pseudocaminho aumentador,
+
+- encontre um pseudocaminho aumentador P,
+- calcule a capacidade residual δ de P,
+- envie δ unidades de fluxo ao longo de P (e atualize f).
+
+### Desempenho do algoritmo
+
+O consumo de tempo do algoritmo de Ford-Fulkersonal é proporcional ao número de iterações. Tudo se reduz, portanto, à seguinte questão: Quantos pseudocaminhos aumentadores são necessários para produzir um fluxo máximo a partir do fluxo nulo?
+
+Número de pseudocaminhos aumentadores: Se todos os arcos do grafo têm capacidade inteira e menor que uma constante M então o número de pseudocaminhos aumentadores necessário para atingir um fluxo máximo é menor que VM, sendo V o número de vértices do grafo.
+
+Essa estimativa do número de pseudocaminhos aumentadores não é excessivamente pessimista: existem grafos capacitados em que o número de pseudocaminhos aumentadores chega muito perto de VM.
+
+
+Como o número de pseudocaminhos aumentadores depende das capacidades dos arcos, o algoritmo não pode ser considerado satisfatório: a mera multiplicação de todas as capacidades por 100, por exemplo, pode multiplicar o consumo de tempo por 100. Para obter um desempenho que não dependa das capacidades será preciso escolher os pseudocaminhos aumentadores de maneira mais cuidadosa.
+
+## Teorema: Fluxo maximo e corte minimo
+
+### Saldo de fluxo num conjunto de vértices
+
+O fluxo que sai de um conjunto S é a soma dos fluxos nos arcos que saem de S e o fluxo que entra em S é a soma dos fluxos nos arcos que entram em S. O saldo de fluxo em S é a diferença `outflow(S) − inflow(S)` entre o fluxo que sai de S e o fluxo que entra em S.
+
+### Cortes e sua capacidade
+
+Dado um grafo com vértice inicial s e vértice final t, dizemos que um conjunto de vértices separa s de t se contém s mas não contém t. Um **corte** (cut) no grafo é qualquer conjunto de arcos que tenha a forma `C' ∪ C''`, sendo C' o leque de saída e C'' o leque de entrada de algum conjunto S de vértices que separa s de t. Diremos que o conjunto S é a margem superior do corte e o complemento Ŝ de S é a margem inferior do corte.
+
+Um arco de um corte é **direto** se pertence ao leque de saída da margem superior do corte (ou seja, se vai da margem superior para a margem inferior) e é **reverso** se pertence ao leque de entrada da margem superior do corte (ou seja, se vai da margem inferior para a margem superior).
+
+Num grafo capacitado, a **capacidade de um corte** é a soma das capacidades dos arcos diretos do corte. A expressão **corte mínimo** é uma abreviatura de corte de capacidade mínima.
+
+### Cortes limitam fluxo
+
+A capacidade de qualquer corte limita a intensidade de qualquer fluxo que respeita as capacidades.
+
+**Delimitação superior dos fluxos**: Em qualquer grafo capacitado com vértice inicial e vértice final, a intensidade de qualquer fluxo que respeita as capacidades é menor que ou igual à capacidade de qualquer corte.
+
+Essa propriedade pode ser resumida pela expressão intensidade `(fluxo) ≤ capacidade (corte)`. Ela decorre da propriedade dos saldos, como mostramos a seguir.
+
+**Prova**: Seja f um fluxo que respeita as capacidades, C um corte, e S a margem superior do corte. Pela propriedade dos saldos, a intensidade de f é igual ao saldo de f em S. Esse saldo é outflow(S) − inflow(S) e portanto não passa de outflow(S). Como f respeita as capacidades, outflow(S) não passa da capacidade do corte C.
+
+**Uma consequência importante da delimitação**: Se um fluxo f respeita as capacidades e tem intensidade igual à capacidade de algum corte então f é um fluxo de intensidade máxima. Um tal corte é, portanto, um certificado da maximalidade do fluxo.
+
+### Análise do algoritmo de Ford-Fulkerson
+
+Quando discutimos o algoritmo de Ford-Fulkerson no capítulo de mesmo nome, omitimos a prova de sua correção. Para mostrar que o algoritmo de fato resolve o problema do fluxo máximo, basta provar o seguinte fato:  se um dado fluxo f não tem pseudocaminho aumentador então f é um fluxo de intensidade máxima. Segue a prova desse fato:
+
+**Prova**:  Suspenda, temporariamente, a cláusula da definição de pseudocaminho aumentador que exige que o pseudocaminho termine em t. Seja S o conjunto de todos os vértices que são término de um pseudocaminho aumentador. É claro que s está em S e o vértice t está fora de S pois, por hipótese, não existe pseudocaminho aumentador que termine em t. Considere o corte C cuja margem superior é S. Todos os arcos diretos de C estão cheios e todos os arcos reversos estão vazios. Portanto, o saldo de f em S é igual à capacidade de C.
+
+De acordo com a propriedade dos saldos, o saldo de f em S é igual à intensidade de f. Por outro lado, conforme a delimitação superior dos fluxos, não existe fluxo de intensidade maior que a capacidade de C. Logo, nosso fluxo f tem intensidade máxima!
+
+Essa análise do algoritmo de Ford-Fulkerson prova o seguinte teorema:
+
+**Teorema do fluxo máximo e corte mínimo (Maxflow-mincut theorem)**:  Em qualquer grafo capacitado com vértice inicial e vértice final, a intensidade de um fluxo máximo é igual à capacidade de um corte mínimo.
+
+O algoritmo de Ford-Fulkerson mostra também um importante adendo ao teorema: se as capacidades dos arcos forem números inteiros então existe um fluxo máximo tal que o fluxo em cada arco é um número inteiro.
+
+## Implementação do algoritmo de Ford-Fulkerson
+
+### Estrutura de dados: nós expandidos
+
+Adicionando a eles alguns campos auxiliares. Assim, além dos campos usuais w e next, teremos
+
+- um campo `cap` para a capacidade do arco que o nó representa,
+- um campo `flow` para o fluxo no arco,
+- campos `type` e `twin`, cujo papel será discutido adiante.
+
+Um nó com esses campos será chamado nó expandido.
+
+```c
+typedef struct node *link;
+struct node { // nó expandido
+   vertex w;
+   int cap;
+   int flow;
+   int type;
+   link twin;
+   link next;
+};
+```
+
+### Arcos artificiais
+
+É difícil procurar pseudocaminhos num grafo por causa dos arcos reversos dos pseudocaminhos. Para enfrentar essa dificuldade, vamos acrescentar alguns arcos auxiliares ao nosso grafo.
+
+Para cada arco v-w, acrescentaremos ao grafo um novo arco w-v, antiparalelo a v-w.
+
+```c
+b = malloc( sizeof (struct node));
+b->w = v;
+b->twin = a;
+a->twin = b;
+b->next = G->adj[w];
+G->adj[w] = b;
+```
+
+Usaremos o campo twin para que a possa ser facilmente localizado a partir de b e vice-versa.  O campo  type indicará o tipo do arco: +1 se o arco for original e -1 se for artificial:
+
+```c
+a->type = +1;
+b->type = -1;
+```
+
+O novo grafo, depois da adição dos arcos artificiais, será chamado grafo expandido.
+
+No grafo expandido, cada arco artificial terá capacidade zero e o fluxo em cada arco artificial será o negativo do fluxo no correspondente arco original.
+
+```c
+b->cap = 0;
+b->flow = -a->flow;
+```
+
+Como flow é positivo nos arcos originais, a desigualdade flow ≤ cap valerá em todo arco artificial.
+
+### Caminhos aumentadores e capacidades residuais
+
+Com a introdução dos arcos artificiais, os pseudocaminhos do grafo original podem ser representados por caminhos tradicionais no grafo expandido: os arcos artificiais de um caminho no grafo expandido representam os arcos reversos do correspondente pseudocaminho no grafo original.
+
+Suponha que o grafo original tem um certo fluxo. Então a capacidade residual de um arco, seja ele original ou artificial, é a diferença `cap − flow`.
+
+Como o fluxo é positivo nos arcos originais, a capacidade residual dos arcos artificiais é positiva. Se o fluxo respeita as capacidades dos arcos originais, a capacidade residual dos arcos originais também é positiva.
+
+A capacidade residual de um caminho é a menor das capacidades residuais de seus arcos. Um caminho de s a t no grafo expandido é aumentador se tiver capacidade residual estritamente positiva.
+
+### Camada externa da implementação do algoritmo
+
+A função GRAPHmaxflow() abaixo implementa o algoritmo de Ford-Fulkerson.  Ela calcula um fluxo máximo num grafo capacitado G com vértice inicial s e vértice final t. A função GRAPHmaxflow() tem três fases:
+
+- a primeira fase expande o grafo acrescentando arcos artificias e preenchendo os campos type e twin dos nós;
+- a segunda fase calcula um fluxo máximo e registra o fluxo nos campos flow dos nós;
+-  terceira fase elimina os arcos artificias criados durante a primeira fase e assim restaura a estrutura original de G.
+
+```c
+/* Esta função devolve a intensidade de um fluxo máximo no grafo capacitado
+ G com vértice inicial s e vértice final t. O fluxo é armazenado nos campos
+ flow dos nós das listas de adjacência. O código supõe que G tem no máximo
+ 1000 vértices. */
+int GRAPHmaxflow( Graph G, vertex s, vertex t) {
+   vertex pa[1000];
+   link parc[1000]; // parent-arc
+   Expand( G);
+   for (vertex v = 0; v < G->V; ++v)
+      for (link a = G->adj[v]; a != NULL; a = a->next)
+         a->flow = 0;
+
+   int intensity = 0;
+   while (true) {
+      int delta = AugmPath( G, s, t, pa, parc);
+      if (delta == 0) break;
+      for (vertex w = t; w != s; w = pa[w]) {
+         link a = parc[w];
+         a->flow += delta;
+         a->twin->flow -= delta;
+      }
+      intensity += delta;
+   }
+
+   Contract( G);
+   return intensity;
+}
+
+/* Acrescenta os arcos artificiais ao grafo G e preenche os campos type e
+twin de todos os nós das listas adj[]. */
+void Expand( Graph G) {
+   for (vertex v = 0; v < G->V; ++v)
+      for (link a = G->adj[v]; a != NULL; a = a->next)
+         a->type = +1;
+   for (vertex v = 0; v < G->V; ++v)
+      for (link a = G->adj[v]; a != NULL; a = a->next)
+         if (a->type == +1) {
+            link b = malloc( sizeof (struct node));
+            b->w = v;
+            b->cap = 0;
+            b->type = -1;
+            b->twin = a;
+            a->twin = b;
+            b->next = G->adj[a->w];
+            G->adj[a->w] = b;
+         }
+}
+
+/* A função Contract() desfaz o efeito de Expand(), removendo todos os
+ arcos artificiais do grafo. */
+void Contract( Graph G) {
+   for (vertex v = 0; v < G->V; ++v) {
+      link a = G->adj[v];
+      while (a != NULL && a->type == -1) {
+         link b = a;
+         G->adj[v] = a = a->next;
+         free( b);
+      }
+   }
+}
+```
+
+Parte substancial do código de GRAPHmaxflow() está escondida na função AugmPath(), que tem a missão de encontrar um caminho aumentador (= augmenting path). Duas diferentes implementações da função AugmPath() são discutidas nos proximos topicos.
+
+## Cálculo de um caminho aumentador mínimo
+
+Alguns arcos de G são originais enquanto outros são artificiais, mas a função ignora essa distinção e toma conhecimento apenas da capacidade residual cap - flow de cada arco. A função limita-se a calcular um caminho de s a t que tenha capacidade residual estritamente positiva e seja o mais curto possível sob essa restrição. O caminho é armazenado no par de vetores pa[] e parc[].
+
+A função ShrtAugmPath() é uma mera adaptação da função GRAPHbfs() de busca em largura.
+
+```c
+/* Esta é a versão ShrtAugmPath() da função AugmPath(). */
+#define ShrtAugmPath AugmPath
+
+/* Esta função recebe um grafo capacitado G e um fluxo registrado nos campos
+ flow dos nós das listas de adjacência. Calcula um caminho de comprimento mínimo
+ de s a t dentre os que têm capacidade residual estritamente positiva e armazena
+ o caminho nos vetores pa[] e parc[]. Devolve a capacidade residual do caminho;
+ se nenhum caminho de s a t tem capacidade residual estritamente positiva,
+  devolve 0. A função supõe que todos os arcos têm capacidade menor que uma constante M. */
+int ShrtAugmPath( Graph G, vertex s, vertex t, vertex pa[], link parc[])
+{
+   vertex v;
+   int visited[1000];
+   for (v = 0; v < G->V; ++v) visited[v] = -1;
+   QUEUEinit( G->V);
+   visited[s] = 0;
+   QUEUEput( s);
+
+   while (!QUEUEempty( )) {
+      v = QUEUEget( );
+      if (v == t) break;
+      for (link a = G->adj[v]; a != NULL; a = a->next) {
+         vertex w = a->w;
+         int residual = a->cap - a->flow;
+         if (visited[w] == -1 && residual > 0) {
+            visited[w] = 0;
+            pa[w] = v; parc[w] = a;
+            QUEUEput( w);
+         }
+      }
+   }
+
+   if (visited[t] == -1) return 0;
+   int delta = M;
+   for (vertex w = t; w != s; w = pa[w]) {
+      link a = parc[w];
+      int residual = a->cap - a->flow;
+      if (residual < delta) delta = residual;
+   }
+   QUEUEfree( );
+   return delta;
+}
+```
+
+### Número de iterações do algoritmo do fluxo máximo
+
+Edmonds e Karp mostraram, em 1972, que o consumo de tempo dessa implementação não depende das capacidades dos arcos.
+
+Número de caminhos aumentadores: O número de caminhos aumentadores usados pela combinação de GRAPHmaxflow() com ShrtAugmPath() nunca é maior que `VA/2`, sendo V o número de vértices e A o número de arcos originais.
+
+## Caminho aumentador de máxima capacidade residua
+
+Alguns arcos de G são originais enquanto outros são artificiais, mas a função ignora essa distinção e toma conhecimento apenas da capacidade residual cap - flow de cada arco. A função limita-se a calcular um caminho de s a t que tenha a maior capacidade residual possível.
+
+A função MaxCapAugmPath() é uma variante do algoritmo de Dijkstra. No início de cada iteração, para cada vértice x fora da árvore radicada definida por pa[] e parc[], o número cprd[x] é a capacidade residual de um caminho de capacidade residual máxima dentre os que começam em s, terminam em x, e têm um só vértice (o último) fora da árvore radicada.
+
+```c
+/* Esta é a versão MaxCapAugmPath() da função AugmPath(). */
+#define MaxCapAugmPath AugmPath
+
+/* Recebe um grafo capacitado G e um fluxo registrado nos campos flow dos nós
+das listas de adjacência. Calcula um caminho de capacidade residual máxima de
+s a t e armazena o caminho nos vetores pa[] e parc[]. Devolve a capacidade
+residual do caminho ou devolve 0 se tal caminho não existe. A função supõe
+que todas as capacidades são menores que uma constante M. */
+int MaxCapAugmPath( Graph G, vertex s, vertex t, vertex pa[], link parc[])
+{
+   int cprd[1000];
+   PQinit( G->V);
+   for (vertex x = 0; x < G->V; ++x)
+      cprd[x] = 0, PQinsert( x, cprd);
+   cprd[s] = M;
+   PQinc( s, cprd);
+
+   while (!PQempty( )) {
+      vertex x = PQdelmax( cprd);
+      if (cprd[x] == 0 || x == t) break;
+      for (link a = G->adj[x]; a != NULL; a = a->next) {
+         int residual = a->cap - a->flow;
+         if (residual > cprd[x]) residual = cprd[x];
+         vertex y = a->w;
+         if (residual > cprd[y]) {
+            cprd[y] = residual;
+            pa[y] = x, parc[y] = a;
+            PQinc( y, cprd);
+         }
+      }
+   }
+   PQfree( );
+   return cprd[t];
+}
+```
+
+### Número de iterações do algoritmo de fluxo máximo
+
+O consumo de tempo da função GRAPHmaxflow() é proporcional ao número de iterações e portanto ao número de caminhos aumentadores necessários para atingir o fluxo máximo.  Quantos caminhos são necessários, no pior caso?
+
+Número de caminhos aumentadores:  O número de caminhos aumentadores usados pela função GRAPHmaxflow() junto com MaxCapAugmPath() nunca é maior que `2 A log M`, sendo A o número de arcos originais e M a maior das capacidades.
