@@ -1292,4 +1292,372 @@ Chamos de **file system (FS)** a parte do sistema operacional que gerencia tais 
 
 ### File naming
 
-Arquivos são um mecanismo de abstração, uma maneira de ler/escrever informações no disco.
+Arquivos são um mecanismo de abstração, uma maneira de ler/escrever informações no disco. Na maioria dos sistemas, os nomes dos arquivos são strings com tamanho de 1 a 80. Alem disso, no UNIX, existe diferenciação entre letras maiusculas e minusculas.
+
+Muitos sistemas suporta nomes de arquivos que são dividos em 2 partes por um `.`. A parte depois do `.` é chamada de **extensão do arquivo**. Em sistemas como o UNIX, extensão de arquivos são meramente convernsões e não são _forçadas_ pelo SO. Alem disso, elas podem servir para dizer qual programa padrão deve abrir aquele tipo de arquivo.
+
+### File structure
+
+Arquivos podem ser estruturados de 3 principais maneiras:
+
+- Representar ele como uma simples sequencia de bytes, que depende dos programas para atribuir algum significado. UNIX e W98 usam isso. Isso permite muita flexibilidade, pois um arquivo pode conter qualquer coisa e pode ter qualquer nome.
+- Arquivos podem ser registros de tamanho fixo, cada um com sua estrutura interna. Foi usado antigamente, na epoca dos cartões.
+- Podemos organizar o registro de arquivos como uma arvore, ordenando ela para acesso mais rapido.
+
+### Tipos de arquivo
+
+**Regular files** são as coisas dos usuarios. **Diretorios** são arquivos do sistema que mantem a estruta do FS. **Character special files** são usados para dispositivos IO e **block special files** são usados para _modelar_ discos.
+
+Arquivos regulares são, na grande maioria das vezes, arquivos ASCII ou binarios. Os ASCII são arquivos compostos por linhas de texto, sua grande vantagem é que podem ser lidos e impressos, alem de editados em qualquer editor de texto.
+
+Já os arquivos binarios são todos os arquivos que não são ASCII. Normalmente eles apresentam algum tipo de etrutura interna que so vai ser entedida pelo programa que o interpreta.
+
+### File acesss
+
+Os primeiros SOs so tinham um tipo de acesso a arquivos, **sequential acess**. Assim, quando um processo tivesse que ler algum byte/record do arquivo, ele tinha que fazer isso de maneira sequencial, percorrendo todos antes do que se quer.
+
+Quando começou a se usar discos para se armazenar informação, foi possivel que partes de um arquivo pudessem ser lidas fora de ordem, ou ate mesmo acessadas por uma chave e não por sua posição. Chamamos isso de **random acess files**.
+
+### File Attributes
+
+Tambem chamados de **metadata**, são informações extras armazenadas nos arquivos, como data, tamanho, proteção, etc.
+
+### File operations
+
+A seguir, temos as operações mais comuns que podem ser feitas em arquivos.
+
+- `Create`: cria um arquivo vazio
+- `Delete`: apaga o arquivo e libera espaço de disco
+- `Open`: antes de usar um arquivo, um processo precisa abri-lo. Isso significa carregar os atributos e uma lista dos endereços de memoria do arquivo, fazendo com que o acesso a ele seja rapido.
+- `Close`: retira as informações que foram trazidas acima. Alguns sistemas limitam o numero de arquivos que podem estar abertos em algum instante.
+- `Read`: le algo do arquivo. Deve se passar quanta informação vai ser lida e um buffer para se colocar tal informação
+- `Write`: se coloca algo no arquivo. Se for no final, o arquivo é aumentado, se for no meio, coisas vão ser sobrescritas.
+- `Append`: forma restrita do write, colocando coisas no fim do arquivo.
+- `Seek`: para random acess files. Dizemos para onde queremos apontar no arquivo, depois disso podemos fazer as outras operações normalmente, a partir da posição especificada.
+
+## Diretorios
+
+### Simple directories
+
+Um diretorio contem varias entradas, uma por arquivo. Uma possibilidade é fazer com que essas entradas possuam o nome do arquivo, os seus atributos e os endereços onde seus dados estão armazenados. Outra maneira é fazer com que cad aentrada tenha um ponteiro para uma estrutura que ira descrever o arquivo.
+
+Qaundo um arquivo é aberto, o So procura no diretorio ate achar o nome do arquivo que deseja abrir, então ele carrega na memoria todos os atributos e endereços de memoria desse arquivo, a partir dai, qualquer referencia feita no arquivo busca coisas na memoria.
+
+### Hierarchical Directory Systems
+
+Maneira de organizar melhor os arquivos, formando uma especie de arvore. Onde temos o diretorio raiz junto com uma infinidade de subdiretorios e afins.
+
+### Path Names
+
+Para dar nome aos arquivos que estão nessa hierarquia de diretorios, temos dois principais metodos. Podemos atribuir um **absolute path name** ao arquivo, que consiste no caminho percorrido desde o diretorio raiz ate o arquivo, por exemplo, `/usr/srs/server/pm/proto.h`.
+
+Outro tipo de nome é o **relative path name**, que é usado em conjunto com o conceito de **working directory**. Com isso, fazemos com que a pasta raiz _se torne_ (so de mintirinha) o diretorio atual.
+
+Cada processo esta em um **working directory**, caso seja necessario, o processo tambem pode mudar de working direcotry.
+
+Muitos sistemas possuem duas entradas (arquivs) em todo diretorio, `.` (diretorio atual) e `..` (diretorio pai).
+
+### Directory Operations
+
+Principais funções que lidam com diretorios:
+
+- `Create`: Cria um diretorio vazio, apenas com os arquivos `.` e `..`.
+- `Delete`: Deleta um diretorio, apenas diretorios vazios podem ser deletados.
+- `Opendir`: Abre um diretorio para que ele possa ser lido, ou seja, coloca suas entradas na memoria.
+- `Closedir`: Fecha o diretorio, tirando suas entradas da memoria.
+- `Readdir`: Retorna a proxima entrada (arquivo) em um diretorio aberto.
+- `Rename`: Muda o nome do diretorio.
+- `Link`: É uma tecnica que permite que o arquivo seja mostrado em mais de um diretorio, recebe um arquivo e um caminho, linka o arquivo para ele tambem aparecer nesse caminho, esse link incrementa o contador no i-node do arquivo.
+- `Unlink`: Retira o link do arquivo, se esse era o unico link que continha o arquivo, tal arquivo é removido do FS (No UNIX, a operação de excluir um arquivo é somente um unlink).
+
+## File system implementation
+
+### File system layout
+
+So recapitulando. Discos podem ser dividos em partições, com FS independentes em cada uma. O setor 0 do disco é chamado de **MBR (master boot record)** e é usado para dar _boot_ no sistema. O fim do MBR contem a tabela de partições. A BIOS le e executa o programa em MBR, que vai achar e executar o **boot block**. O BB inicializa o SO contido naquela partição. Toda partição começa com um BB, mesmo que ela não contenha um SO.
+
+Em um sistema não se pode ter mais de 4 **partições primarias**, que é o tamanho da array que descreve as partições. Alguns SO permitem que alguma entrada dessa lista seja uma **extended partition**, que aponta para uma lista ligada de **logic paritions**. Isso faz possivel termos qualquer numero de partições adicionais. A BIOS não pode iniciar o SO de uma partição logica.
+
+Uma alternativa para extender partições, que usada pelo MINIX, é fazer com que uma partição aceite uma **subpartition table**. A vantagem disso é que podemos fazer toda e qualquer coisa que fariamos em uma partição normal dentro dessa subpartição.
+
+Depois do boot block, o layout de uma partição varia de FS para FS. Em sistemas UNIX, a partição tem a cara abaixo:
+
+| Boot block | Super block | Free space mgmt | I-nodes | Root dir | Files and directories |
+| --- | --- | --- | --- | --- | --- |
+
+O **superblock** é responsavel por conter todos os parametros principais acerca do FS e é colocado na memoria assim que o sistema é iniciado. Depois vem as informações sobre os blocos livres no disco. Depois temos os _I-nodes_, uma array que fala sobre cada arquivo. Depois temos a raiz do sistema de arquivos e finalmente o restante dos arquivos e diretorios.
+
+### Implementando arquivos
+
+O problema mais importante no armazenamento de arquivos é manter a informação de quais blocos de disco são responsaveis por cada arquivo.
+
+#### Alocação contigua
+
+A maneira mais simples é armazenar cada arquivos numa sequencia contigua de blocos. Temos duas vantagens principais: é simples de implementar, pois, para saber onde um arquivo esta basta saber onde esta o bloco inicial e o numero total de blocos que o arquivo oculpa; a performance de leitura é muito alta, pois todo o arquivo pode ser lido do disco em uma unica operação.
+
+Porém, o maior problema com isso é a fragmentação. Coforme os arquivos vão sendo criados e apagados, vão se criando buracos no disco, e para se ter novamente um bom espaço util, é necessario desfragmentar o disco, o que é muito custoso.
+
+Esse tipo de alocação é boa para dispositivos em que so se escreve uma vez e que sabemos o tamanhos dos arquivos que serão escritos de antemão. Como DVDs.
+
+#### Linked list allocation
+
+Outra maneira é manter, para cada arquivo, uma lista ligada que contem os blocos que compoem aquele arquivo. Com esse metodo, nenhum espaço de disco é perdido com fragmentação, a não ser a fragmentação interna no ultimo bloco do arquivo. Ademais, basta que o diretorio so guarde o primeira parte da lista.
+
+Todavia, acessar os blocos assim, de maneira aleatoria e sem nenhuma ordem pode ser muito lento e custoso. Como gastamos um pedaço de cada bloco com um ponteiro para o proximo bloco da lista, perdermos um pouco de espaço ai tbm.
+
+#### Linked list allocation using a table in memory
+
+Podemos melhorar a solução acima colocando os ponteiros dos blocos em uma tabela, onde cada linha é um bloco de memoria. Assim, um arquivo que usasse os blocos 4, 9 e 12, apontaria para a linha 4, a informação na linha 4 seria a linha 9, a informação na linha 9 seria uma marcação de fim de arquivo (-1). Essa tabela é chamada de **FAT (file allocation table)**.
+
+Com isso, evitamos que um bloco tenha seu tamanho reduzido pois precisa armazenar o ponteiro. Porém, acabamos de ter que colocar toda essa tabela na memoria principal, para um disco de 20GB e blocos de 1KB, essa tabela iria ocupar 60~80MB. Usado pelo MS-DOS e W98.
+
+#### I-nodes
+
+Ideia de associar essa estrutura para cada arquivo. Cada nó é uma tabela que contem os atributos e endereços de memoria do arquivo. A grande vantagem é que o i-node só precisa estar na memoria principal quando um arquivo é aberto. Se cada inode ocupa n bytes e so podemos ter k arquivos abertos no sistema simultaneamente, então o espaço maximo ocupado sera nk.
+
+Porem, o problema se da quando definimos inodes de tamanho fixo, assim, temos um limitante do numero de blocos que um arquivo pode ter. Para solucionar esse problema, podemos fazer com que as ultimas entradas da tabela linkem para outras tabelas, os **indirect blocks**, que são continuações da tabela atual.
+
+### Implementando diretorios
+
+Quando um arquivo é aberto, o SO pega o _path name_ fornecido pelo usuario para achar o diretorio em que o arquivo esta. Achar um diretorio, significa, primeiro achar o diretorio raiz. No UNIX classico o _superblock_ nos diz onde ons _i-nodes_ podem ser encontrados, o primeiro _i-node_ aponta para o diretorio raiz, criado junto com o FS. No windows, informações no _boot sector_ localizam o **MFT (master file table)**, que é usado para se encontrar outras componentes do sistema.
+
+Depois que o diretorio raiz é encontrador, basta seguir o caminho fornecido ate se chegar na pasta desejada. Agora, basta percorremos a lista de entradas no diretorio para acharmos o ponteiro para o _i-node_ do arquivo desejado.
+
+#### Shared files
+
+Quando temos arquivos presentes em mais de um diretorio. No UNIX, como usamos _i-node_, basta que as pastas que desejam mostrar aquele arquivo apontem para o seu _i-node_. Tal _i-node_ vai ter um contador do numero de pastas que apontam pra ele, quando esse contador chega a 0 o _i-node_ é deletado.
+
+O tipo de ligação acima é chamado de **hard link**. A maior limitação é que os _i-nodes_ são estruturas de uma unica partição, ou seja, não podem existir links entre essas duas partições. Outro problema é que um arquivo so pode ter 1 dono, que vai mudar suas permissões, se esse dono exclui esse arquivo, outro usuario que tem uma copia do mesmo não pode mudar suas permissões.
+
+Um outro jeito de compartilhar arquivos é criando **symbolic links** (**atalho** no windows). Nessa maneira, criamos um arquivo em que o conteudo é um _path_ para outro arquivo. O problema é que se o arquivo principal for renomeado ou excluido, todos os _symbolic links_ ficam orfãos.
+
+#### Diretorios no UNIX
+
+A estrutura de um diretorio no UNIX é bem simples. Um diretorio é composto por uma lista de entradas (arquivos), a estrutura de uma entrada contem uma string ASCII (14 bytes) com o nome do arquivo e o numero do _i-node_ (2 bytes). Como diretorios tambem são arquivos, eles entram nessa estrutura.
+
+#### Diretorios em NTFS
+
+Desenvolvido pela microsoft, o **new technology file system** é o FS padrão. NTFS permite nomes de arquivos grandes, de ate 255 caracteres, alem de grandes _path names_, ate 32767 caracteres. Os caracteres usados são os unicode, 16bit cada, que pode conter caracteres de todas as linguas.
+
+No NTFS um arquivo é uma coleção de atributos, e cada atributo é uma sequencia de bytes. A estrutura basica é a **MFT (master file table)**, que pode conter 16 atributos de ate 1KB. Se esse espaço não for suficiente para o arquivo, podemos ter um atributo que aponta para outra MFT, chamamos isso de **nonresident attribute**.
+
+### Disk space management
+
+#### Block size
+
+Como ja sabemos que os arquivos serão armazenados em blocos, resta saber qual sera o tamanho desses blocos. No UNIX, o tamanho padrão do bloco é 1KB.
+
+#### Keeping track of free blocks
+
+Temos dois principais metodos _keeparmos track_ dos free blocks:
+
+Podemos usar uma lista ligada, com cada bloco, apontando para o maximo numero de blocos livres que ele conseguir. A parte boa é que so precisamos guardar o no principal na memoria.
+
+Outra maneira é usar um bitmap, onde blocos ocupados são marcados com um bit ligado. Essa approach utiliza menos espaço, porem precisamos manter todo o bitmap na memoria.
+
+### File System Reliability
+
+Aqui, olharemos maneiras de proteger o FS contra defeitos e falhas.
+
+Em discos modernos, com milhões de blocos, é impossivel assegura que não teremos _bad blocks_. Existe soluções proprias do device para lidar com eles. Além disso, podemos tomar a solução via software que é criar um arquivo que ocupa todos os _bad blocks_ entrados, assim, nenhum outro arquivo vai utiliza-los pois eles nunca estarão na _free list_.
+
+#### Backups
+
+Um dos artefatos mais conhecidos de backup é a **trash bin**, ou seja, quando um arquivo é deletado ele não é diretamente eliminido do sistema e sim tranferido para esse diretorio.
+
+Claramente, ao se fazer um backup, não é necessario que guardemos todas as pastas no FS. Não queremos os binarios dos programas, pois basta baixa-los novamente; não queremos os arquivos temporarios; não queremos os arquivos relacionados a IO, aqueles contidos em `/dev/`.
+
+Ademais, caso backups sejam feitos constantemente, não queremos realizar novamente o backup de arquivos que não foram modificados, essa é a ideia de **incremental dumps**. Outra decisão a ser tomada é se devemos ou não aplicar um algoritmo de compressão sob os dados, dado que caso uma sessão seja corrompida poderemos perder todo o backup.
+
+A primeira estrategia que podemos tomar é um **physical/logical dump**, ou seja, copiar todos os blocos do disco, desde o bloco 0 ate o fim, para o disco de backup. Implementar essa estrategia é facil. Sabemos que não adianta de nada _realizar o backup_ de blocos vazios. Além disso, é necessario tomar cuidado com os _bad blocks_, caso eles estejam sendo tomados conta pelo device, não tem muito o que ser feito, caso quem esteja cuidando deles seja o SO, atravez de _bad block files_, é necessario que esses arquivos não sejam copiados. A parte boa dessa estrategia é sua simplicidade (codar é tranks) e sua rapidez (dependemos da rapidez do disco somente). Os principais pontos negativos são a inabilidade de pularmos diretorios, de fazermos _incremental jumps_ ou de restaurarmos somente alguns arquivos.
+
+A segunda estrategia é realizar **logical dumps** que começa em um ou mais diretorios especificados e, recursavemente, faz o backup de arquivos modificados a partir de uma certa data. Logo, como o backup dos arquivos é feito em serie, fica mais facil fazer a restauração de um arquivo/diretorio especifico. A primeira coisa que a ser feita é uma analise da _directory tree_, pois é necessario que todas as pastas e atributos que façam parte do _path_ de algum arquivo tambem faça parte do backup, para se manter a consistencia.
+
+#### File System Consistency
+
+Caso o FS _crashe_ ou apresente falhas durante a escrita de um bloco, teremos um sistema incosistente, com possiveis falhas. Para lidar com isso, no UNIX, temos a ferramenta `fsck` para checar se o FS (partição) esta consistente.
+
+Podemos checar a consistencia de blocos. Para isso, a ferramenta cria duas tabelas que tem um contador para cada bloco. Os contadores da primeira tabela dizem quantas vezes aquele bloco esta presente em um arquivo e os contadores da segunda tabela dizem quantas vezes aquele bloco aparece em uma free list (ou bitmap). O progrma então passa por todos os _i-nodes_ e incrementa os respectivos contadores na primeira tabela. Depois ele passa pela free list e incrementa todos os contadores da segunda tabela. Dai, temos 4 casos:
+
+- O FS esta consistente, cada bloco tem valor 1 na primeira tabela OU na segunda;
+- Podemos ter uma situação de **missing block**, quando o contador de um bloco fica zerado em ambas tabelas. Isso pode ter ocorrido porque o FS _crashou_ em algum momento e para resolver basta colocar este bloco na free list;
+- Podemos tem um bloco com valor >1 na segunda tabela, ou seja, ele aparece mais de uma vez na free list. Para resolver, basta reconstruir a free list;
+- O pior caso é quando o bloco tem valor >1 na primeira tabela, ou seja, ele é usado por mais de um arquivo. A solução, para manter a consistencia do FS, e copiar este bloco para outro(s) e refazer a referencia em algum do(s) arquivos. Isso garante que o FS esta consistente, mas provavelmente os arquivos estão corrompidos e uma mensagem deve ser apresentada ao usuario.
+
+Alem disso, a ferramenta pode checar a consistencia dos diretorios/arquivos. Para isso, uma tabela é criada, com um contador para cada arquivo (_i-node_). A ferramenta começa no diretorio raiz, e desce recursivamente ate alcançar todos os diretorios. Para todo arquivo (contando os _hard links_) em todo diretorio, incrementamos seu contador. Quando o processo termina, comparamos os numeros armazenados na tabela com o numero do contador interno de cada _i-node_. Se esses numeros batem, o sistema esta consiste, caso contrario, temos 2 casos:
+
+- O valor do contador interno do _i-node_ é maior que o numero na tabela. Isso quer dizer que mesmo que o arquivo seja removido de todos os diretorios possiveis, ele nunca vai ser removido do sistema (seu contador nunca vai chegar a 0). Para consertar, basta setar o valor do contador para o valor da tabela.
+- Caso o contador interno tenha um valor menor, podemos fazer com que o arquivo seja removido do sistema mesmo quando ainda esta em outros diretorios. Para conserta, basta, novamente, atualizar o valor interno com o da tabela.
+
+### File system performance
+
+Sabemos que acessar as coisas em disco é muito mais custoso e demorado do que acessar as coisas na memoria. Aqui, vamos ver algumas tecnicas para minimizar este problema.
+
+#### Caching
+
+Tecnica mais usada para reduzir acesso ao disco é chamada **block/buffer cache**, que é uma colação de blocos que estão logicamente no disco mas são mantidas na memoria para o acesso rapido.
+
+O algoritmo mais comum para gerenciar o cache faz o seguinte: checa todas as _read requests_; se o bloco pedido esta no cache, basta usa-lo; caso contrario ele é trazido para o cache e então copiado para o que foi solicitado.  Além disso, como o cache pode ter milhares de blocos, precisamos de uma maneira rapida para determinar se um bloco esta la ou não, isso é feito com o auxilio de uma hash table.
+
+Um problema é que não queremos que um bloco modificado fique muito tempo no cache, pois se algo ocorrer, aquelas mudanças não serão armazenadas em disco, e, consequentemente, serão perdidas. No UNIX, a solução encotrada utiliza a system call `sync`, que força com que os blocos modificados em cache sejam atualizados no disco. Com isso, temos um programa chamado `update` que é executado em background e faz uma chamada de `sync` a cada 30 segundos.
+
+Versões antigas do windows utilizavam uma solução chamada **write-through caches**, que realiza a atualização no disco toda vez que um bloco é modificado. Com isso, o uso de disco era mais alto do que se não tivessemos cache.
+
+#### Block read ahead
+
+Outra tecnica é fazer com que blocos estejam no cache antes mesmo de serem referenciado (mãe dinah feelings). Isso é feito quando temos arquivos contidos em blocos sequencias. Assim, se eu estou lendo o bloco N do arquivo, eu muito provavelmente vou ler o bloco N+1, logo, eu ja vou trazer ele enquanto estiver usando o bloco N.
+
+## Segurança
+
+Vamos ver como proteger os daditos.
+
+### The Security Environment
+
+As pessoas, frequentemente, utilizam os termos _segurança_ e _proteção_ como sinonimos. Aqui, definiremos _segurança_ como o problema geral, e _mecanismos de proteção_ como artefatos especificos do SO para resguardar a informação no sistema. A seguir, olharemos 3 facetas sobre segurança
+
+#### Ameaças
+
+Do ponto de vista de segurança, um sistema tem 3 objetivos principais, com 3 ameaças para cada um.
+
+O primeiro é **data confidentiality**, ou seja, coisas secretas devem permancer secretas. O dono da informação especifica quem pode ve-la, e o sistema tem que garantir que as especificações sejam cumpridas.
+
+O segundo objetivo é o de **data integrity**, ou seja, usuarios não autorizados não devem poder realizar alterações em arquivos sem que os donos dos mesmo autorizem.
+
+O terceiro objetivo é garantir **system availability**, ou seja, ninguem pode causar um disturbio no sistema e deixa-lo inutilizavel.
+
+#### Intruders
+
+Temos dois tipos de intruzos, os que so querem poder ler algo que eles não podem e os que querem mudar algo que eles não podem.
+
+#### Malicious programs
+
+Famosos **malwares**. O tipo mais comum é um **virus**, um programa que pode se multiplicar e se transmitir para outros computadores. Algo que um virus pode fazer é tornar o computador inutilizavel enquanto ele estiver la, isso é chamado de ataque **DOS (denial of service)**, que geralmente consome todo o poder de processamento da CPU, alem de encher o disco com lixo. Quando um virus de DOS se espalha por varios computadores, temos um ataque **DDOS (distributed ...)**.
+
+Outro tipo de programa malicioso é o **key logger**, que guarda tudo o que foi digitado no teclado. Muito usado para roubar senhas.
+
+Um virus normalmente vem dentro de algum outro programa. Caso o programa malicioso venha sozinho, chamamos ele de **worm** (famoso `virus.exe`).
+
+Outra categoria são os **trojan horses**. Esses, são deliberadamente baixados pelo usuario, na forma de uma aplicação que faz alguma função valida. Porém, ao ser instalada/executada, tal aplicação vai, tambem, executar/trazer softwares maliciosos.
+
+#### Accidental data loss
+
+Informação tambem pode ser perdida sem querer. Mas isso é facilmente tratavel/evitavel se backups forem feitos. Dentre as principais causas, temos:
+
+- atos de Deus: fogo, chuva, guerras
+- erros de hardware ou software
+- erros humano: pessoas sendo zé
+
+### Generic Security attacks
+
+O melhor jeito de achar falhas em um sistema é contratar um **penetration team**, que vai varrer todas as possiveis falhas dentro do sistema. Abaixo, temos as areas onde é mais comum de se encontrar erros
+
+1. Fazer o pedido de _memory pages_, espaço de disco e ler o que tem neles. Muitos sistemas não apagam as coisas ao desalocar recursos, assim, infromação pode estar contida e ser acessada por outros usuarios.
+2. Tentar realizar system calls que não são permitidas, ou ate mesmo usar parametros que não são validos.
+3. Dar inicio no processo de login é fechar a aplicação no meio do caminho. Em alguns sistemas o programa que faz a autenticação vai ser _killado_ e o login considerado bem sucessido.
+4. Fazer um programa que digita `login:  password:` o terminal assim que o sistema é iniciado, desse jeito da pra roubar a senha.
+
+## PROTECTION MECHANISMS
+
+Aqui, vamos olhar as implementações e tecnicas que o sistema utilizar para aplicar as politicas de segurança.
+
+Em alguns sistemas, a proteção é aplicada por um programa chamado **reference monitor**. Toda vez que um acesso a algum recurso potencialmente protegido é requisitado, esse programa checa se esse acesso deve ser autorizado ou não. Abaixo, vamos descrever o ambiente em que este programa opera.
+
+### Protection domains
+
+Em um sistema, temos varios **objetos** (CPUS, discos, impressoras, processos, arquivos, semaforos, etc). É obvio que precisamos de alguma maneira para limitar as ações que podem ser feitas ou recebidas por um objeto.
+
+Um **dominio** é um conjunto de pares `<objetos, permissões>`, que especifica quais operações podem ser realizadas naquele objeto. Normalmente um dominio se aplica a 1 usuario, dizendo o que ele pode ou não fazer. A todo momento, cada processo é executado dentro de um _protection domain_, ou seja, dentro de um conjunto de objetos que ele pode acessar assim como um conjunto de opereações que ele pode realizar em cada um. Um processo pode mudar de dominio durante sua execução.
+
+No UNIX, o dominio de um processo é definido pelo **UID** (used ID) e **GID** (group ID). Com isso, basta sabermos a combinação <UID, GID> para que possamos listar todos os objetos que tal processo pode acessar, assim como as permissões RWX que cada um possui.
+
+Ademais, um processo em UNIX tem duas partes: a parte de usuario e a parte de kernel. Quando um processo realiza uma syscall ele muda para a sua metade de kernel, agora ele tera acesso a um conjunto diferente de objetos, logo, uma syscall causa um **domain switch**.
+
+### Acess control lists
+
+Maneira de expressar os dominios. Uma das tecnicas é associar a cada objeto uma lista de todos os dominios que podem acessar aquele objeto, chamamos isso de **acess control list (ACL)**. Se dissermos que cada usuario corresponde a um dominio diferente, podemos dizer que, por exemplo, cada arquivo vai ter uma lista especificando quais usuarios podem acessa-lo, assim como as operações que cada um pode fazer. Essa lista é ordenada para facilitar a busca.
+
+As permissões mais basicas são as de leitura, ecrita e execução, porem, outras permissões podem ser atribuidas/criadas.
+
+Podemos tambem criar **grupos**, assim, todos os usuarios do grupo tem o mesmo conjunto de permissões.
+
+### Capabilities
+
+Outra maneira de expressar os dominios é, para cada processo, associar uma lista dos objetos que podem ser acessados e quais operações são permitidas, chamamos isso de **capability list** ou **C-list**, onde os itens individuais são chamados de **capabilites**. No UNIX, cada item dessa lista contem um _i-node_ (para identificar o objeto) e um bitmap (para identificar as permissões). As listas em si tambem são objetos, e podem apontar para outras listas, facilitando a geração de **subdominios**.
+
+Para mantermos essa lista protegida, a deixamos no _user space_, mas deixamos as Capabilities criptografas.
+
+# TCP/IP
+
+## O modelo de referencia OSI
+
+Tráfego na rede é gerado quando ocorre uma solicitação na rede. A solicitação tem de ser alterada daquilo que o usuário vê para um formato que possa ser utilizado na rede.
+
+O tráfego da rede é gerenciado na forma de **pacotes de dados**, a informação de um usuário transformado em um formato entendido pela rede. O modelo OSI tem 07 Camadas, e é utilizado como uma diretriz pelos desenvolvedores de programas de rede.
+
+As 7 camadas do modelo OSI operam como blocos de construção para os pacotes de dados, onde cada camada adiciona mais informação. **Cabeçalho** de uma camada é simplesmente a informação que detalha o formato do pacote de dados, é recebido na camada correspondente do cliente receptor e é utilizado para entender o formato do pacote. Uma camada so se comunica com camadas adjacentes (diretamente acima ou abaixo).
+
+- **Aplicação**: faz a interface entre o protocolo de comunicação e o aplicativo.
+- **Apresentação**: codifica o dado para um formato entendido pelo protocolo. È nesta camada que pode, casualmente, ser feita a compressão de dados e criptografia.
+- **Sessão**: permite que duas aplicações de computadores diferentes estabeleçam uma sessão de comunicação.
+- **Transporte**: é responsável pela fragmentação no transmissor e montagem no receptor, dos dados em **pacotes**.
+- Rede: converte os endereços lógicos em endereços físicos e determina qual rota vai ser seguida pelos pacotes.
+- Link de dados (**Enlace**): adiciona informações como endereço da placa de rede de origem, de destino, dados de controle e o CRC, um esquema para detecção de erros na transmissão.
+- **Física**: transforma a informação em sinais compatíveis com o meio por onde os dados devem ser transmitidos, elétrico ou óptico, por exemplo.
+
+Fluxo do remetente: aplicação -> fisica
+Fluxo do receptor: fisica -> aplicação
+
+## Os protocolos TCP/IP
+
+Modelo de trafego em rede que possui apenas 4 camadas.
+
+- **Aplicação**: HTTP, FTP.
+- **Transporte**: TCP e UDP.
+- **Internet**: IP, ICMP, ARP e RARP. Principal responsavel pelo endereçamento e roteamento da rede. Reponsavel pela fragmentação de pacotes, por monta-los e desmonta-los.
+- **Interface com rede**: gateways e roteadores.
+
+### ARP protocol
+
+**Address Resolution Protocol** ou ARP é um protocolo usado para encontrar um endereço da camada de enlace a partir do endereço da camada de rede (como um endereço IP). O emissor difunde em broadcast um pacote ARP contendo o endereço IP de outro host e espera uma resposta com um endereço MAC respectivo. É utilizado primordialmente para traduzir Endereço IP para Endereço MAC.
+
+### RARP protocol
+
+**Reverse Address Resolution Protocol** (RARP) associa um endereço MAC conhecido a um endereço IP. Um dispositivo de rede, como uma estação de trabalho sem disco, por exemplo, pode conhecer seu endereço MAC, mas não seu endereço IP.
+
+### ICMP protocol
+
+**Internet Control Message Protocol**, é utilizado para fornecer relatórios de erros à fonte original.
+Algumas das possíveis mensagens são:
+• Rede fora de alcance;
+• Nó fora de alcance;
+• Porta fora de alcance;
+• Nó desconhecido;
+• Rede destino desconhecida;
+• Tempo de vida do pacote excedido;
+• Pedido de eco (ping);
+• Resposta de eco (pong);
+
+### IP protocol
+
+Roteia pacotes de um nó para o outro, na mesma rede ou em redes distintas. Usa comutação por pacotes com datagrama não-confiável. Ou seja, não garante a entrega dos pacotes e é não-orientado à conexão. Define também o endereçamento dos nós, o endereço IP.
+
+O **endereço IP** é identificação de um equipamento conectado a Internet. Todos os equipamentos devem ter um endereço IP associado e único que será utilizado na comunicação entre os equipamentos.
+
+### Camada de transporte
+
+Arquitetura TCP/IP especifica 2 tipos de protocolos:
+- TCP (Transmission Control Protocol). Orientado à conexão e garante a transferência
+confiável de dados
+- UDP (User Datagram Protocol). Não orientado à conexão, simples extensão do IP e não garante a entrega de dados
+
+### UDP
+
+Muito mais rápido e bastante simples. Não orientado à conexão, não executa controle de fluxo, controle de erro e sequenciamento. Devido a sua simplicidade é considerado não confiável.Segmentos podem não chegar ou chegar fora de ordem.
+
+Utilizado em aplicações de midia, que são tolerantes a falhas, como streaming.
+
+### TCP
+
+Serviço confiável, garante que os dados serão entregues na forma que foram enviados. É mais complexo que o UDP e o principal protocolo atualmente. Recebe um fluxo da aplicação e o divide em partes, a camada de rede aceita cada parte como um segmento distinto, e o destino restaura o fluxo original. O destino retorna um numero de confirmação quando recebe algo, dizendo qual a proxima coisa que deve ser enviada, se demorar muito para essa mensagem chegar, o ultimo segmento é reenviado
+
+O fluxo é constituido por: estabelecimento da conexão -> transferencia de dados -> termino da conexão.
