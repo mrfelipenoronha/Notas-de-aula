@@ -2301,3 +2301,112 @@ int MaxCapAugmPath( Graph G, vertex s, vertex t, vertex pa[], link parc[])
 O consumo de tempo da função GRAPHmaxflow() é proporcional ao número de iterações e portanto ao número de caminhos aumentadores necessários para atingir o fluxo máximo.  Quantos caminhos são necessários, no pior caso?
 
 Número de caminhos aumentadores:  O número de caminhos aumentadores usados pela função GRAPHmaxflow() junto com MaxCapAugmPath() nunca é maior que `2 A log M`, sendo A o número de arcos originais e M a maior das capacidades.
+
+# Algoritmo de Bellman-Ford
+
+Dado um vértice s de um grafo com custos arbitrários (positivos e negativos) nos arcos, encontrar uma árvore de caminhos mínimos com raiz s no grafo.
+
+## Instrodução
+
+Algoritmos de busca só sabem procurar passeios, pois não podem evitar a repetição de arcos. Um grafo que tem um ciclo negativo tem passeios de custo arbitrariamente pequeno, tão negativo quanto se queira. Assim, o algoritmo de busca é levado a repetir arcos ad æternum.
+
+Se um grafo não tem ciclos negativos ao alcance de s, todos os caminhos de custo mínimo com origem s são simples. Além disso, a coleção de todos os caminhos mínimos com origem s pode ser representada por uma SPT (árvore de caminhos mínimos) com raiz s.
+
+## Versão preliminar do algoritmo de Bellman-Ford
+
+O algoritmo de Bellman-Ford tenta resolver o problema dos caminhos de custo mínimo. Se o grafo tiver um ciclo negativo ao alcance de s, o algoritmo anuncia a existência de um tal ciclo e desiste de encontrar uma SPT; caso contrário, o algoritmo calcula uma SPT com raiz s.
+
+A ideia é simples: o algoritmo relaxa os arcos do grafo repetidamente. Cada arco é relaxado várias vezes mas não precisa ser relaxado mais que V vezes, sendo V o número de vértices do grafo.  Eis uma implementação preliminar do algoritmo:
+
+```c
+
+/* Recebe um grafo G com custos arbitrários nos arcos e um vértice s e decide se
+existe algum ciclo negativo ao alcance de s. Se tal ciclo não existe, armazena em
+pa[] o vetor de pais de uma SPT de G com raiz s. Se algum vértice v não está ao
+alcance de s em G, teremos pa[v] == -1. As distâncias a partir de s são
+armazenadas no vetor dist[]. */
+bool GRAPHsptBF0( Graph G, vertex s, vertex *pa, int *dist)
+{
+   const int INFINITY = INT_MAX;
+   for (vertex v = 0; v < G->V; ++v)
+      pa[v] = -1, dist[v] = INFINITY;
+   pa[s] = s, dist[s] = 0;
+
+   for (int k = 0; k < G->V-1; ++k) {
+      for (vertex v = 0; v < G->V; ++v) {
+         if (dist[v] == INFINITY) continue; // Evita overflow
+         for (link a = G->adj[v]; a != NULL; a = a->next) {
+            if (dist[v] + a->c < dist[a->w]) {
+               dist[a->w] = dist[v] + a->c; // relaxação
+               pa[a->w] = v;
+            }
+         }
+      }
+   }
+
+   for (vertex v = 0; v < G->V; ++v) {
+      if (dist[v] == INFINITY) continue;
+      for (link a = G->adj[v]; a != NULL; a = a->next)
+         if (dist[v] + a->c < dist[a->w])
+            return true; // ciclo negativo
+   } // todos os arcos estão relaxado
+   return false; // pa[] define uma SPT
+}
+
+```
+
+A função GRAPHsptBF0() consome V(V+A) unidades de tempo no pior caso.
+
+## Algoritmo de Bellman-Ford com fila
+
+A versão preliminar do algoritmo de Bellman-Ford examina muitos arcos antes que o arco esteja em condições de ser relaxado. A versão seguinte do algoritmo examina os arcos numa ordem mais racional: um arco arco v-w é examinado somente depois que o valor de dist[v] tiver diminuído.  Para impor essa ordem, basta manter os vértices numa fila e inserir um vértice w na fila toda vez que algum algum arco da forma v-w for relaxado.
+
+Se um ciclo negativo estiver ao alcance de s, o processamento continuará para sempre a menos que seja explicitamente interrompido. Mas essa interrupção não deve ser feita antes que todos os passeios com origem s sejam examinados.  Para implementar essa parada forçada, a fila de vértices é dividida em V-1 blocos e cada bloco é separado do seguinte por alguma marca. Adotaremos o pseudovértice V para fazer o papel da marca de separação entre blocos.
+
+Para que a fila de vértices não fique excessivamente longa, um vértice será inserido na fila somente se já não estiver presente no bloco corrente, ou seja, depois da última ocorrência do separador V.
+
+```c
+/* Recebe um grafo G com custos arbitrários nos arcos e um vértice s e decide se 
+existe algum ciclo negativo ao alcance de s. Se tal ciclo não existe, armazena em
+pa[] o vetor de pais de uma SPT de G com raiz s. Se alum vértice v não está ao
+alcance de s em G teremos pa[v] == -1. As distâncias a partir de s são armazenadas
+no vetor dist[]. */
+bool GRAPHsptBF1( Graph G, vertex s, vertex *pa, int *dist)
+{
+   const int INFINITY = INT_MAX;
+   QUEUEinit( G->A);
+   bool *onqueue = mallocc( G->V * sizeof (bool));
+   for (vertex u = 0; u < G->V; ++u)
+      pa[u] = -1, dist[u] = INFINITY, onqueue[u] = false;
+   pa[s] = s, dist[s] = 0;
+   QUEUEput( s);
+   onqueue[s] = true;
+   int V = G->V; // pseudovértice
+   QUEUEput( V); // sentinela
+   int k = 1;
+
+   while (true) { // !QUEUEempty( )
+      vertex v = QUEUEget( );
+      if (v < V) {
+         for (link a = G->adj[v]; a != NULL; a = a->next) {
+            if (dist[v] + a->c < dist[a->w]) {
+               dist[a->w] = dist[v] + a->c; // relaxação
+               pa[a->w] = v;
+               if (onqueue[a->w] == false) {
+                  QUEUEput( a->w);
+                  onqueue[a->w] = true;
+               }
+            }
+         }
+      } else { // A
+         if (QUEUEempty( )) return false; // B
+         if (k++ > G->V-1) return true; // C
+         QUEUEput( V); // sentinela
+         for (vertex u = 0; u < G->V; ++u)
+            onqueue[u] = false;
+      }
+   }
+
+   free( onqueue);
+}
+```
