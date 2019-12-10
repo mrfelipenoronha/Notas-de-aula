@@ -1,546 +1,1663 @@
+# Resumo  do livro OPERATING SYSTEMS - DESIGN AND IMPLEMENTATION
 
-# Indice
+Famoso livro do MINIX
 
-<!-- MDTOC maxdepth:6 firsth1:1 numbering:0 flatten:0 bullets:1 updateOnSave:1 -->
+# Conceitos de um sistema operacional
 
-- [Indice](#indice)   
-- [MINIX](#minix)   
-- [Conceitos de sistemas operacionais](#conceitos-de-sistemas-operacionais)   
-   - [Processos](#processos)   
-   - [Arquivos](#arquivos)   
-   - [Pricipais chamadas de sistema do MINIX](#pricipais-chamadas-de-sistema-do-minix)   
-- [Race conditions e mutex (mutual exclusion)](#race-conditions-e-mutex-mutual-exclusion)   
-   - [Como resolver](#como-resolver)   
-      - [Solução 1: inibir interrupções](#solução-1-inibir-interrupções)   
-      - [Solução 2: implementar exclusão mutua por software](#solução-2-implementar-exclusão-mutua-por-software)   
-      - [Solução 3: exclusão mutua por hardware, test-and-set](#solução-3-exclusão-mutua-por-hardware-test-and-set)   
-   - [Semáforos](#semáforos)   
-      - [Sistemas produtor consumidor](#sistemas-produtor-consumidor)   
-   - [Monitories](#monitories)   
-- [Comunicação entre processos: envio de mensagens](#comunicação-entre-processos-envio-de-mensagens)   
-   - [Problema: Filosofos comilões](#problema-filosofos-comilões)   
-- [Escalonamento de processos](#escalonamento-de-processos)   
-   - [Data limite](#data-limite)   
-   - [FIFO](#fifo)   
-   - [Shortest job first](#shortest-job-first)   
-   - [Shortest remaining time first](#shortest-remaining-time-first)   
-   - [Round-Robin](#round-robin)   
-   - [Multi-level queues](#multi-level-queues)   
-   - [Multi-level feedback queues](#multi-level-feedback-queues)   
-   - [Escalonamento garantido](#escalonamento-garantido)   
-   - [Sistemas multiprocessados](#sistemas-multiprocessados)   
-      - [Afinidade de processos](#afinidade-de-processos)   
-- [Deadlocks](#deadlocks)   
+Aqui é feita uma breve introdução.
 
-<!-- /MDTOC -->
-
-
-Professor: Alan Durhan
-Email: aland@usp.br
-
-Bibliografia:
-- Operating systems. Tanembaum (livro de apoio para minix)
-- Sistemas operacionais. Silberschatz (livro de referencia)
-
-Essas notas de aula são um misto entre coisas vistas em aula e outras fontes como os livros e notas de aulas de amiguinhos, como as [do Renato Ferreira](github.com/renatocf/MAC0422).
-
-# MINIX
-
-Sistema criado pelo Tanembaum na decada de 80. É um sistema ue tem muito semelhança com a versão 7 do unix e foi concebido com a ideia de ser usado nas universades, para o ensino sobre sistemas operacionais, sendo um software open source.
-
-Nessa materia usaremos o sistema `minix`.
-
-# Conceitos de sistemas operacionais
-
-A interface entre o SO e os programas que o usuario usa é definida por um conjunto de *intruções extendidas* que o SO provem, são as **system calls**, que tendem a mudar de sistema para sistema, mas que possuem, em seu cerne, o mesmo conceito.
-
-As chamadas de sistema do minix lidam com duas categorias: processos e sistema de arquivos.
+A ponte entre o sistema operacional e os programas de usurario é feita por um conjunto de *instruções extendidas*, conhecidas como **chamadas de sistema**. As chamadas de sistema apresentadas aqui usam como base as chamadas **POSIX**.
 
 ## Processos
 
-Um processo é basicamente um programa em execução. Associado a cada processo existe um **adress space**, uma lista de posições na memoria que o programa pode ler|escrever. Neste espaço fica todas as coisas coisas que serão utilizadas pelo programa, incluindo (pasmem), o proprio programa.
+Um processo é bsicamente um programa em execução, associado á um **adress space**, um posição na memoria de onde o programa pode ler e escrever. Além disso, temos alguns registradores associados, como o PC, ST e outros registradores de hardware.
 
-Um conceito muito interessante sobre processos é a **multiprogramação**, que é quando o SO decide *pausar* um processo e colocar outro para ser executado na CPU. Com isso, todas as informações acerca desse processo suspenso precisam ser salvas, para que depois elas possam ser recuperadas e o processo volte ser executado de onde ele parou. A estrutura que armazena essas informações é a **process table**, implementada em uma array ou lista ligada.
+Um olhar interessante para um processo é do ponto de vista de multiprogramação. De tempos em tempos a CPU decide parar de executar um processo e começar a executar outro. Quando um processo é suspenso dessa maneira, todas as informações acerca de sua execução devem ser salvas para que o processo possa voltar a ser executado depois, a partir de onde ele parou. Essas informações são guardadas na **process table**.
 
-O processos podem invocar outros processos, um **processo filho**, e muita das vezes se faz a necessidade de realizar uma **interprocess comunication**. Cada processo tem uma identificação, **PID**. Matar um processo pai termina, tambem, os processos filhos.
+As chamadas mais importantes do gerenciador de processos (PM) são as que criam e destroem outros.
 
-Todas essas rotinas são realizadas por **system calls**
-
-Um proceso pode se encotrar em 5 estados diferentes, são eles:
-
-- Blocked: Esperando pelo resultado de uma chamada ao sistema;
-- Ready: Pronto para rodar, mas não necessariamente rodando (outro programa de maior prioridade pode estar ocupando a CPU. Nesse estado, ele só precisa ocupar a CPU);
-- Blocked Suspended: Se muitos programas estão rodando ao mesmo tempo, um programa pode ser suspenso, e ficar aguardando até que o sistema se desocupe. Nesse estado, ele ainda está aguardando por alguma chamada ao sistema;
-- Ready Suspended: Quando o programa recebe sua requisição ao SO, fica Ready, mas ainda estará suspenso;
-- Running: O programa ocupando a CPU.
+Toda pessoa/usuario tem um **UID** (user identification). Todo processo guarda o ID de quem o criou. Usuarios podem ser membros de grupos, cada grupo tem um **GID**. Um UID, chamado de **superuser** tem superpoderes.
 
 ## Arquivos
 
-Chamadas do sistema são necessarias para criar/remover/ler/escrever arquivos de forma facil e eficiente. Se o acesso á um arquivo é requisitado existem 2 opções: O acesso foi permitido, nesse caso, o SO retorna um **file descriptor**; O acesso foi negado é um codigo de erro (-1) é retornado.
+Antes de um arquivo ser lido ele deve ser aberto, e apos isso ele deve ser fechado. Para essas operaçẽs, temos chamadas de sistema encarregadas.
 
-Para agrupar arquivos o minix usa **diretorios**, sendo que um diretorio pode conter arquivos ou outrso diretorios, criando assim uma hierarquia, o **sistema de arquivos**, que muitas vezes pode ser representaod como uma especie de arvore. Todo arquivo dentro de um diretorio pode ser especificado atravez de um **path name** que parte do **root directory**.
+Um **diretorio** é uma maneira de agrupar arquivos. Dentro de um diretorio podemos ter arquivos e outros diretorios. Com isso, criamos uma hierarquia, o sistema de arquivos.
 
-Podemos ainda, definir um **working directory**, onde todo processo executado dentro dele o enxerga como raiz.
+Todo arquivo pode ser acessado a partir de um **path name**, que é um caminhos a partir do **root directory**, tambem chamado de **absolute path**.
 
-Por ultimos, temos os **pipes**, que são *pseudoarquivos* usados para conectar dois processos distintos. Assim, basta que o processo A escreva em um pipe e que o processo B leia este arquivo para realizar uma conexão/comunicação.
+Podemos tambem definir um **working directory**, um diretorio em que um processo esta sendo executado, e, que, todo arquivos tera um **relative path** que tem tal diretorio como origem.
 
-## Pricipais chamadas de sistema do MINIX
+A proteção de um arquivo é feito por um codigo de proteção composto por 11 bits. Esse codigo é composto por **3-bits fields**: um para o dono, um para os membros do grupo do dono e outro para o resto, e 2 bits que serão discutidos depois. Esses 3 bits são conhecidos como **rwx bits** (read, write and execute permissions).
 
-- fork (única maneira de criar novos processos)
-    - Gera duas cópias idênticas nas memórias separadas
-    - Chamada volta zero para processo filho, e pid para o processo pai
+Esse conjunto de permissões é checado quando pedimos para abrir um arquivo. Caso acesso seja concedido, o SO nos retorna um **file descriptor**.
 
-- wait()
-    - Processo pai aguarda o final de execução de um dos filhos
+Temos tambem **special files**, que fazem com que I/O devices pareçam arquivos. Dois tipos existem:
 
-- execve(name, argv, envp)
-    - A imagem do processo é substituída pelo conteúdo de um arquivo, passados argumentos e ambientes (que descreve o terminal, etc).
-    - Essa é a maneira de um programa "mutar", e deixar de ser igual ao processo pai. A imagem vem de algum arquivo executável, que deve ser passado como argumento.
+- Block special files: Usado para devices que são uma coleção de blocos, tais como um disco. Assim, um programa pode acessar um dado bloco do dispositivo.
 
-- exit()
-    - Termina o processo e retorna o parâmetro como código de saída (o zero representa OK). O código único (0) é bom porque todos os outros podem ser usados como erro.
+- Character special files: São usados para dispositivos que fazem a sua entrada e saida na forma de **stream**, como modens e mouses.
 
-- brk()
-    - Altera o tamanho da área de dados do parâmetro (processo)
+Os arquivos especiais são mantidos em `/dev`.
 
-- getpid()
-    - Pede o ID do processo (para poder comunicar via fork).
+Por ultimo, temos um **pipe**, que é meio que um *pseudoarquivo* usado para conectar dois processos.
 
-- signal(sig,func)
-    - Determina captura de um sinal pela função func (em geral, se não der para tratar, o processo é morto).
+## A shell
 
-- kill(pid,signal)
-    - Manda um sinal a um processo. Existe um sinal KILL que realmente mata um processo - mas, de forma geral, ele só funciona para processos filhos.
+É o interpretador de comandos do sistema operacional.
 
-- alarm(seconds)
-    - Agenda um envio do sinal SIGALARM, para que o processo seja avaliado depois de certo tempo. Usando signal, é possível dar tratamentos depois.
 
-- pause()
-    - Suspende o processo ate que este receba o próximo sinal.
+# Estrutura de sistemas operacionais
 
-- creat(name,mode)
-    - Cria um novo arquivo e abre, ou abre e seta o tamanho para zero, retornando o descritor (como 'touch')
+Vamos olhar o sistema operacional um pouco mais internamente agora.
 
-- open(file,how)
-    - Abre um arquivo considerando o nome dele e se terá leitura/escrita. Devolve um descritor de arquivo.
+## Sistemas monoliticos (A grande bagunça)
 
-- close(fd)
-    - Fecha um arquivo aberto.
-    - É importante para que os i-nodes sejam salvos, o que não ocorre se morrer.
+A estrutura aqui é justamente não ter estrutura. O sistema é escrito como uma colção de procedimentos, que se invocam sem nenhuma forma de controle. Para se construir um sistema dessa maneira primeiro se compila todos os procedimentos, depois, todos eles são ligados para forma o OS. Em termos de esconder informação, esse conceito meio que não existe, cada procedimento tem acesso á todo outro procedimento.
 
-- read(fd,buffer,nbytes)
-    - Lê dados em um buffer, retorna bytes lidos.
-    - Lê até nbytes, ou menos. Retorna o número de bytes realmente gravados.
+Todavia, nesse tipo de sistema, as chamadas de sistema são executadas se colocado parametros em locais bem definidos, como na pilha ou em registradores, e então executando uma *trap* especial chamada de **kernell call** ou **supervisor call**.
 
-- write(fd,buffer,nbytes)
-    - Grava dados de um buffer e retorna o número de bytes gravados (porque poderia dar problemas).
+Essa operação tira o sistema de **modo usuario** e o coloca em controle do SO.
 
-- lseek(fd,offset,whence)
-    - Muda o poteiro do arquivo, retona a nova posição para posição. Whente indica se o offset relativo à posição atual, início ou fim.
+Podemos definir uma estrutura basica como sendo:
 
-- stat(name,&buf),fstat(fd,&buf)
-    - Lê e retorna o estado do arquivo
+1. Um programa principal que invoca chamadas de sistema
+2. Um conjunto de chamadas de sistema
+3. Um conjunto de utilitarios que auxiliam as chamadas.
 
-- dup(fd1)
-    - Aloca um novo descritor de arquivos (número que descreve
-      qual é o i-node que representa o arquivo) para o arquivo
-      aberto. Dup cria um novo número para o mesmo i-node.
-    - Dup costuma ser útil para SUBSTITUIR o arquivo apontado
-      por aquele descritor específico, e depois retornar. É
+Muitas vezes chamamos de **serviços** os procedimentos que *entregam* as system calls.
 
-- pipe(&fd[0])
-    - Cria um pipe, retorna fd de leitura e escrita no vetor.
+## Sistemas em camadas
 
-- ioctl(fd,request,argp)
-    - Executa operações em arquivos especiais (em geral terminais)
+A generalização da estrutura anterior é organizr o sistema em camadas, cada uma sendo contruida em cima da anterior. Dijkstra fez o primeiro sistema utilizando essa ideia, com a seguinte estrutura:
 
-- link(name1,name2)
-    - Faz entrada name2 ser o mesmo i-node que name1
+Camada | Função
+:---   | :---
+5 | O operador
+4 | Programas do usuario
+3 | Administração de I/O
+2 | Process comunication
+1 | Administração de memoria
+0 | Alocação de processos e multiprogramação
 
-- unlink(name)
-    - Remove uma entrada do diretório corrente
+## Maquinas virtuais
 
-- mount(special,name,rwflag)
-    - Monta um sistema de arquivos
+Surgiu como opção para se ter um sistema com **multiusuarios** e **multiprogramação**. O coração do sistema é o **virtual machine monitor**, que é executada no hardware e realiza a multiprogramçaõ, provendo varias maquinas virtuais. Tais maquinas eram copias exatadas do hardware em que o VMM estava sendo executado (aprensentando kernel/user mode, I/O, interrupções, etc), ou seja, um prgrama que esta sendo executado nela parece que esta sendo executado diratemente na maquina, e não em cima de outro serviço (VMM). Com isso, cada VM podia rodar um SO diferente.
 
-- unmount(special)
-    - Desmonta um sistema de arquivos
+A solução de usar VM's se mostra muito util hoje em dia para a execução de software legado em hardwares novos, ou seja, programas que foram escritos para serem executados em hardware antigos e não apresentam compartiilidade com os novos.
 
-- sync()
-    - Sincroniza todos os blocos de disco do cache
+## Modelo cliente-servidor
 
-- chdir(name)
-    - Muda o diretório corrente
-    - O cd, do Bash, usa esse programa
+Uma tendencia nos SO modernos é mover o maximo de coisas possiveis para camadas mais externas ao SO, deixando um **minimal kernel**. A ideia é implementar a maioria das funções do SO no espaço de usuario. Para requisitar um serviço, tai como ler um arquivo, um processo de usuario (agora lido como **client process**) manda uma requisição para um **server process**, que realiza o trabalho e manda de volta a resposta.
 
-- chroot(dirname)
-    - Muda o diretório raiz (cuidado)
-    - Funciona APENAS para a shell correspondente
+Com isso, o kernel faz, basicamente, a comunicação entre os clientes e servidores. Dividindo o SO entre serviços (tais como *file service*, *process service*, *terminal service* ou *memory service*), fazemos com que eles sejam executados em espaço de usuario, e que, para acessarem diratemente o hardware, precisam pedir autorização ao kernel. Isso faz com que o sistema tenha mais robustez e maior tolerancia a falhas.
 
-- chmod(name,mode)
-    - Muda os bits de proteção do arquivo
+---
 
-- uid = getuid()
-    - Retorna o UID do usuário
+# Processos
 
-- gid = getgid()
-    - Retorna o GID do usuário.
+## Introdução
 
-- setuid()
-    - Muda o UID do usuário.
+Os computadores modernos podem fazer diversas coisas ao mesmo tempo, todavia, em um dado instante de tempo, a CPU estara rodando somente 1 programa, porém, ao decorrer de varios segundos, ela tera exeutado varios programas. Esse efeito, criado pelo SO, é o que alguns chamam de **pseudoparallelism**, que contrasta com o verdadeiro paralelismo implementado em um sistema com **multiprocessing**.
 
-- setgid()
-    - Muda o GID do usuário.
+### O modelo do processo
 
-- time(&seconds)
-    - Retorna o tempo em segundos desde 1/1/1970.
+Todos os softwares executaveis no computador, incluindo o proprio SO, são organizados em uma sequencia de processos. Um processo pode ser **definido como** um programa em execução, junto com seus contadores, registradores e variaveis. No ponto de vista do processo, cada um tem sua propria CPU, que o executa de maneira initerrupta. Do ponto de vista pratico, a CPU muda, de tempos em tempos, o processo que esta sendo executado por ela, á isso, damos o nome de **multiprogramação**.
 
-- stime(tp)
-    - Reinicializa o tempo desde 1/1/1970.
+De maneira geral, não ligamos para essa **mudança de contexto** que ocorre na CPU. Entretando, em procedimentos especificos, como a leitura de um segmento em disco, medidas podem ser tomadas para que o SO não tire aquele processo de execução.
 
-- utime(file,timep)
-    - Seta o valor do último acesso do arquivo.
+### Criação de processos
 
-- times(bufer)
-    - Retorna o tempo do usuário e de sistema.
+SO's precisam de alguma maneira de ter certeza que todos seus processos essenciais existam. Em sistemas simples, é possivel fazer com que todos os processos que serão utilizados estejam prontos quando o sistema inicializar. Entretando, em sistemas de proposito geral, isso não é pratico, pois é necessario que processos sejam criados e finalizados durante o tempo em que os sistema estiver de pé.
 
-# Race conditions e mutex (mutual exclusion)
+4 eventos principais fazem com que um evento seja criado:
 
-Processos rotineiramente precisam se comunicar:
-- Se processo quer ler arquivo, precisa enviar requisição ao sistema de arquivos
-- Sistema de arquivos precisa se comunicar com driver
-- Num esquema de pipes, a saída de um processo precisa ser comunicada a outro processo
+1. Inicialização do SO
+2. Execução de um sistema de criação de processos
+3. Requisição de usuario para a criação de novo processo
+4. Iniciação de um **batch job**.
 
-Em muitos sistemas operacionais, quando processos trabalham juntos, eles compartilham algum armazenamento comum onde cada um pode ler e escrever. Normalmente memoria ou um arquivo.
+Durante a Inicialização do SO muitos processos são criados. Alguns desses processos realizam inteação com o usuario. Outros, funcionam em *background*, realizando tarefas especificas, os **daemons**.
 
-Quando processos funcionam de maneira independente, isso pode criar uma condição de concorrência (ou “condição de corrida”), ou seja, processos diferentes dependem de informação compartilhada e resultado depende do escalonamento de processos.
+Temos uma chamada de sistema que realiza a criação de um novo processo, `fork()`. Essa chamada cria uma copia exata do processo que a esta invocando, ou seja, cria um **processo filho**, que muitas vezes vai utilizar a chamada `execve()` para substituir sua *memory image*. Cada novo processo criado tem o seu proprio espaço de memoria.
 
-## Como resolver
+### Finalização de processos
 
-Regiões dos processos que podem gerar condições de concorrência são chamadas **regiões críticas**.
+Normalmente, processos terminam por algum dos seguinte motivos:
 
-Dessa maneira, definimos 4 condições para a sessão critica:
-- Só um processo deve entrar na região crítica de cada vez
-- Não deve ser feita nenhuma hipótese sobre a velocidade relativa dos processos
-- Nenhum processo executando fora de sua região crítica deve bloquear outro processo
-- Nenhum processo deve esperar um tempo arbitráriamente longo para entrar na sua região crítica (adiamento indefinido)
+1. Saida normal (voluntario): processo terminou o que tinha que ser feito
+2. Saida por erro (voluntario): processo não pode terminar, por exemplo, um dos argumentos passados á ele estava vazio
+3. Erro fatal (involutario): processo enfrentou algum erro de execução, como divisão por zero
+4. Morto por outro processo (involutario): um processo foi cuzão e quis matar o coleguinha.
 
-### Solução 1: inibir interrupções
+### Hierarquia de processos
 
-O hardware possui instrução especifica para inibir interrupções, SO usa quando o codigo do kernel esta executando. Porem, é uma solução para quando temos problemas (loops infinitos, Operações inválidas, Etc)
+Podemos representar os processos como uma arvore. Quando um processo realiza um `fork()` ele adiciona filhos ao ser nó.
 
-### Solução 2: implementar exclusão mutua por software
+Para exemplificar como arvores de processos são utilizadas vamos mostrar como o MINIX é inicializado. Dois processos especiais, **reincarnation server** e **init** estão na **boot image**. O RS é responsavel por reinicializar todos os drivers e servidores. Em contraste, o *init* é executa o script `/etc/rc`, que fala pro RS quais drivers e servidores devem ser inicilizados. Assim, todos essses novos processos criados serão filhos do RS, e caso, algum deles falhe, o RS sera notificado e realizará a reencarnação do mesmo. Esse mecanismo faz com que o MINIX seja toleravel á uma falha em algum driver ou servidor. Quando o *init* termina isso, ele executa o arquivo de configuração `/etc/ttytab` para saber qual terminal deve ser executado e realiza um *fork* no processo `getty`. Pronto, agora temos um terminal que é filho de *init*. Ou seja, todo novo processo criado pelo usuario sera filho de *init*.
 
-A primeira soção é o **algoritmo de dekker**. Esse algoritimo escolhe um processo como *favorito*, o que acaba com a chance dos processos ficarem competindo pelo uso da CPU.
+### Estados dos processos
 
-```
-Int p1querEntrar= 0;
-Int p2querEntrar= 0;
-Int favorito = 1;
+Mesmo que processos sejam unidades independentes, muitas vezes eles precisam se comunicar ou sincronizar com outros. Um processo pode se encontrar em 3 estados:
 
-# Processo 1
-While (TRUE){
-    p1querEntar = TRUE;
-    while (p2querEntrar){
-        if (favorito == 2){
-            p1querEntrar = FALSE;
-            while (favorito == 2) {};
-            p1querEntrar = TRUE;
-        }
-    }; /*espera*/
-    …..< região crítica>…..
-    favorito = 2;
-    p1querEntrar= FALSE;
-    ….<resto do código>…
+- Running: de fato, usando a CPU em um dado instante
+- Ready: executavel, temporariamente parado para que outro processo seja executado
+- Blocked: impedido de ser executado ate que algum evento externo aconteça
+
+Podendo ter as seguintes transições:
+
+- Running -> Blocked: processos bloquea para receber uma entrada.
+- Running -> Ready: escalonador pega outro processo para usar a CPU
+- Ready -> Running: escalonador escolhe este processo
+- Blocked -> Ready: entrada se torna disponivel
+
+### Implementação de processos
+
+Para implementar processos, o SO utiliza uma *array* de **process tables**, que contem uma posição para cada processo. Essa tabela contem todas as informações acerca do processo.
+
+No MINIX, comunicação entre processos, gerenciamento de memoria e gerenciamento de arquivos são feitos por diferentes modulos, fazendo com que a tabela de processos seja segmentada, cada segmento referente á um modulo.
+
+### Threads
+
+Muitas vezes é desejados que mais de uma tarefa seja executada dentro de um espaço de memoria, de um processo. Com isso, definimos uma **thread** como sendo um **lightweight process** que é executado dentro de um processo. Com isso, cada thread divide a sua execução dentro do tempo de execução de um processo.
+
+Analogamente, precisamos definir uma **thread table**, que armzena informações acerca da execução de cada thread.
+
+## Comunicação entre processos (IPC)
+
+Temos 3 problemas aqui:
+
+1. Como fazer com que 2 processos se comuniquem
+2. Evitar que dois processos esbarrem um no caminho do outro enquanto estao se comunicando
+3. Sequenciar a ordem em que cada processo deve ser executado
+
+Note que todos esses problemas tambem se aplicam as threads.
+
+### Race conditions
+
+Ocorre quando processos compartilham algum recurso, como memoria, e competem para ver qual processo consegue ter acesso ao recurso primeiro, e, dessa forma, o resultado da execução dos processos pode variar de maneira indeterminada.
+
+### Sessão critica
+
+Para resolver o problema das *race conditions* é necessario ter **exclusão mutua**, uma forma de assegurar que se um processo esta usando algum recurso, somente ele vai estar usando o recurso.
+
+A parte do programa do programa que pode vir gerar *race conditions* é chamada de **sessão critica**. Uma solução que aplica a exclusão mutua atende 4 condições:
+
+- 2 processos não podem estar, simultaneamente, na sua sessão critica
+- Nenhuma presunção pode ser feita acerca da velocidade ou quantidade de CPU's
+- Nenhum processo fora de sua sessão critica pode bloquear outros processos
+- Nenhum processo deve esperar para sempre para entrar na sua sessão critica
+
+### Exclusão mutua com *Busy waiting*
+
+Aqui vamos examinar soluções para exclusão mutua, onde, quando um processo esta ocupando realizando tarefas na sua sessão critica, nenhum outro processo vai atrapalhar.
+
+#### Desabilitando interrupções
+
+Uma alternativa simples é fazer com que cada processo desabilite todas as interrupções logo apos entrar em sua sessão critica e reabilite elas logo apos terminar. Dessa maneira, o processo monopoliza a CPU enquanto estiver executando sua SC.
+
+Essa solução falha em dois aspectos:
+
+- Não é muito sabio dar á um processo de usuario o podem de desabilitar interrupções, pois isso pode fazer com que o sistema trave para sempre
+- Ela não se aplica muito bem á computadores com mais de uma CPU, pois nesse cenario, ainda poderiamos ter processos em CPU's diferentes competindo por recursos.
+
+Porém, o kernel usa essa solução em alguma de suas rotinas (mas ele é o kernel então ele pode).
+
+#### Travar variaveis
+
+Considenre uma unica e compartilhada *lock variable*, inicializada com 0. Se um dado processo quer entrar na sessão critica ele testa a varivael
+
+- Se a variavel for 0, ele entra na sessão critica e á coloca com valor 1
+- Caso contrario ele espera até que o valor dela seja 0
+
+Porém, a processo de `test and set` acaba sendo uma condição de corrida, ou seja, dois processos podem querer colocar o valor da variavel como 1 ao mesmo tempo.
+
+#### Strict alternation
+
+```c
+turn = 0;
+
+// Processo 1
+while (TRUE) {
+    while (turn != 0)
+    critical_region( );
+    turn = 1;
+    noncritical_region( );
 }
 
-# Processo 2
-While (TRUE){
-    p2querEntar = TRUE;
-    while (p1querEntrar){
-        if (favorito == 1){
-            p2querEntrar = FALSE;
-            while (favorito == 1) {};
-            p2querEntrar = TRUE;
-        }
-    }; /*espera*/
-    …..< região crítica>…..
-    favorito = 1;
-    p2querEntrar= FALSE;
-    ….<resto do código>…
-}
-```
-
-Uma segunda solução é o **algoritmo de peterson**. Uma melhoria do algoritmo de Dekker, sendo mais sucinta.
-
-```
-Int p1querEntrar= 0;
-Int p2querEntrar= 0;
-Int favorito = 1;
-
-# Processo 1
-While (TRUE){
-    p1querEntar = TRUE;
-    favorito = 2;
-    while (p2querEntrar && favorito == 2) {};
-    …..< região crítica>…..
-    p1querEntrar= FALSE;
-    ….<resto do código>…
-}
-
-# Processo 2
-While (TRUE){
-    p2querEntar = TRUE;
-    favorito = 1;
-    while (p1querEntrar && favorito == 1) {};
-    …..< região crítica>…..
-    p2querEntrar= FALSE;
-    ….<resto do código>…
+// Processo 2
+while (TRUE) {
+    while (turn != 1)
+    critical_region( );
+    turn = 0;
+    noncritical_region( );
 }
 ```
 
-### Solução 3: exclusão mutua por hardware, test-and-set
+A solção acima, de esperar ate um certo valor de varival, é chamada de **busy waiting**, pois gasta CPU enquanto espera.
 
-É uma instrução especial do hardware, que é atomica. Com ela, obtemos o seguinte resultado `test_and_set( a , b ) =➔ {a = b; b = TRUE; }`
+Porém a solução acima tem um problema: caso ele demore muito para executar a sua sessão **não** critica, ele vai impedir que o o outro processo execute a sua sessão critica novamente, violando a 3 regra.
 
-Com isso, podemos ter a seguinte implementação de exclusão mutua
+Essa solução só é boa qunado dois processos ficam alternando execução, sem muita diferença entre tempos de exucução, como, por exemplo, num *spooler* de impressão.
 
-```
-Int ativo = FALSE;
+#### Algoritmo de Peterson
 
-# Processo 1
-While (TRUE){
-    int p1_nao_pode_entrar = TRUE;
-    while (p1_nao_pode_entrar){
-        test_and_set(p1_nao_pode_entrar,
-        ativo);
-    };
-    …..< região crítica>…..
-    ativo = FALSE;
-    ….<resto do código>…
+```c
+
+#define FALSE 0
+#define TRUE 1
+#define N 2 /* number of processes */
+int turn;
+int interested[N]; /* whose turn is it? */
+/* all values initially 0 (FALSE) */
+
+void enter_region(int process) /* process is 0 or 1 */
+{
+    int other = 1 − process; /* number of the other process */
+    interested[process] = TRUE; /* show that you are interested */
+    turn = process; /* set flag */
+    while (turn == process && interested[other] == TRUE); /* null statement */
 }
 
-# Processo 2
-While (TRUE){
-    int p2_nao_pode_entrar = TRUE;
-    while (p2_nao_pode_entrar){
-        test_and_set(p2_nao_pode_entrar,
-        ativo);
-    };
-    …..< região crítica>…..
-    ativo = FALSE;
-    ….<resto do código>…
+void leave_region(int process) /* process: who is leaving */
+{
+    interested[process] = FALSE; /* indicate departure from critical region */
 }
 ```
 
-## Semáforos
+#### Instrução TSL (Test and Set Lock)
 
-Especie de *variavel*, que possui duas ações atomicas:
+Muitos processadores modernos tem a instrução `TSL RX,LOCK`, que funciona da seguinte maneira:
 
-- P/down(semaforo)
-    - Se valor é >0 subtrai 1 e continua
-    - Senão se coloca em uma fila e fica em espera
-- V/up(semaforo)
-    - Se semaforo tem fila, libera o primeiro
-    - Senao incrementa o valor em 1
+- Le a palavra `LOCK` na memoria e a coloca no registrador `RX`
+- Coloca um valor positivo na palara `LOCK`
 
-Temos a variação de **semaforo binario**, que so assume valores em [0, 1].
+Essa instrução é atomica, definida por hardware. Para usar essa instrução, vamos usar uma variavel global LOCK. Quando ela tem o valor 0, qualquer processo pode seta-la para 1 e usar a memoria compartilhada (entrar na SC), e depois de terminar colocar o valor de LOCK para 0 novamente.
 
-Com isso, temos a facilitação da implementação da exclusão mutua em varios processos.
+Podemos definir a seguinte rotina:
 
-O codigo usando um semaforo esta a seguir
+```assembly
 
-```
-Semáforo mutex = 1;
-While (TRUE){
-    P(mutex);
-    ....<região crítica>…..
-    V(mutex);
-    ….<região não crítica>….
-    }
-```
+enter_region:
+    TSL REGISTER,LOCK   | copy LOCK to register and set LOCK to 1
+    CMP REGISTER,#0     | was LOCK zero?
+    JNE ENTER_REGION    | if it was non zero, LOCK was set, so loop
+    RET                 | return to caller; critical region entered
 
-### Sistemas produtor consumidor
+leave_region:
+    MOVE LOCK,#0        | store a 0 in LOCK
+    RET                 | return to caller
 
 ```
-Semaforo_binario mutex; /*exclusão mútua*/
-Semaforo_contador vazio= TAMBUFFER; /*controle buffer*/
-Semaforo_contador cheio = 0; /*controle buffer */
 
-# Produtor
-While (TRUE){
-    registro item_produzido;
-    produz(&item_produzido);
-    P(vazio);
-    P(mutex);
-    coloca_item(item_produzido);
-    V(mutex);
-    V(cheio);
-}
 
-# consumidor
-While (TRUE){
-    registro item_consumido;
-    P(cheio);
-    P(mutex);
-    pega_item(&item_consumido);
-    V(mutex);
-    V(vazio);
-    consome(item_consumido);
-}
-```
+### Sleep and Wakeup
 
-## Monitories
+Tanto a solução de Peterson quanto a TSL então corretas, porem, ambas aprensentam *busy wainting*, ou seja, ficam executando um loop ate poderem entrar na SC, o que é muito custoso e desperdiça recursos da CPU.
 
-É algo implementado pelo compilador, uma especie de objeto. Nesse objeto, somente 1 processo pode entrar nele por vez, esse controle de entrada é feito por tecnincas de exlusão mutua.
+Vamos olhar algumas ideias que usam a comunicação entre processos para solucionar esse problema.
 
-Processo pode emitir um **WAIT**, que “sai” do monitor entre em uma fila associada à varíavel da operação WAIT, o processo é reativado pela operação SIGNAL. Processo pode emitir SIGNAL logo antes de sair do monitor, quem estiver esperando na fila entra em seguida (se houver).
+#### Problema do produtor-consumidor
 
-```
-Monitor ProdutorConsumidor {
-    condition full, empty;
-    int count;
-    procedure coloca_item(item) {
-        if (count == TAMBUFFER) {WAIT(full);} /* espera buffer ter espaço*/
-        entra_item(item); /*altera buffer comum*/
-        count + + ;
-        if (count == 1) {SIGNAL(empty)};/*avisa que tem dado*/
-    }
-    procedure pega_item(&item) {
-        if (count == 0) { WAIT(empty);} /*espera dado*/
-        remove_item(&item); /*retira do buffer*/
-        count - - ;
-    if (count == TAMBUFFER – 1) { SIGNAL(full)} /*buffer não está mais cheio*/
+Digamos que dois processos compartilham um certo *buffer*. Um processo (produtor) coloca coisas nesse buffer e o outro (consumidor) le as coisas do buffer. Um problema aparece quando o produtor quer colocar algo no buffer mas não tem mais espaço, assim, ele entra em modo *sleep* ate que o consumidor retire algo de la. Analogamente, temos o mesmo problema para o consumidor, que pode não ter nada para ser consumido no buffer e tem que esperar ate que o produtor insira algo la.
+
+```c
+
+#define N 100 // espaço no buffer
+int count = 0; // itens no buffer
+
+void produtor() {
+    int item;
+
+    while(1) {
+        item = produce_item()
+        if (count == N) sleep() // buffer esta cheio
+        insert_item(item); // coloca item no buffer
+        count++;
+        if (count == 1) wakeup(consumer) // buffer estava vazio
     }
 }
 
-# Produtor
-While (TRUE){
-    registro item_produzido;
-    produz(&item_produzido);
-    coloca_item(item_produzido);
+void consumidor() {
+    int item;
+
+    while(1) {
+        if (count == 0) sleep(); // buffer vazio
+        item  = remove_item(); // retira do buffer
+        count--;
+        if (count == N-1) wakeup(producer); // buffer estava cheio
+        consume_item(item);
+    }
 }
 
-# Consumidor
-While (TRUE){
-    registro item_consumido;
-    pega_item(&item_consumido);
-    consome(item_consumido);
+```
+
+Porém, aqui, ainda temos uma condição de corrida sob a variavel count.
+
+### Semaforos
+
+Alternativa criada para resolver o problema do produtor/consumidor. Um **semaforo** seria uma variavel que poderia ter o valor 0 (caso nenhum wakeup seja necessario) ou um valor positivo (dizendo quantos wakeups estao pendentes).
+
+A ideia é que tenhamos duas operações `down` e `up` (generalização de sleep e wake up).
+
+A operação **down** (P) checa se o valor do semaforo é maior do que 0, caso positivo decrementa 1 e continua a execução do processo. Caso negativo, o processo é colocado *para dormir* ate que haja algum valor positivo no semaforo. (note que as operações executadas pelo semaforo são atomicas, e por isso garantimos que há exclusão mutua).
+
+A operação **up** (V) incrementa o valor do semaforo. Caso algum processo estivesse esperando para ser acordado, o sistema ativa essa processo para que ele possa ser executado, ou seja, para que ele possa fazer sua chamda de `down`. Note que, apos fazer a operação up, se algum processo estava adormecido, o valor do semaforo vai continuar sendo 0 apos a execução.
+
+#### Resolvendo o problema do produtor consumidor
+
+Para implementar as operações de up e down é necessario usar chamdas de sistema ou a função TSL.
+
+Para o problema do produtor-consumidor, usaremos 3 semaforos:
+
+- `full`: conta o numero de *slots* cheios. Iniciado com 0.
+- `empty`: conta o numeor de *slots* vazios. Iniciado com o numero de *slots no buffer*.
+- `mutex`: gerenciar se o produtor ou o consumidor esta acessando o buffer. Iniciado com 1.
+
+Semaforos que são inicializados com 1 e usados por dois ou mais processos para garantir que somente 1 deles entre na sessão critica são chamados de **semaforos binarios**. Se um processo faz um *down* logo antes de entrar na SC e um *up* logo depois, temos exclusão mutua garantida.
+
+A seguir, esta o problema de produtor consumidor resolvido com semaforos:
+
+```c
+
+#define N 100
+typedef int semaphore;      // Semaforos são ints especiais
+semaphore mutex = 1;        // controle acesso a SC
+semaphore empty = N;        // slots vazios
+semaphore full = 0;         // slots cheios
+
+void producer(void) {
+    int item;
+
+    while (1) {
+        item = produce_item();
+        down(&empty);       // decrementa slot vazio
+        down(&mutex);       // entra na regiao critica
+        insert_item(item);  // coloca item novo no buffer
+        up(&mutex);         // sai da regiao critica
+        up(&full);          // incrementa slot cheio
+    }
+}
+
+void consumer(void) {
+    int item;
+
+    while (TRUE) {
+        down(&full);        // Decrementa slot vazio
+        down(&mutex);       // entra na regiao critica
+        item = remove_item( );
+        up(&mutex);         // sai da regiao critica
+        up(&empty);         // atualiza slot vazios
+        consume_item(item); // faz algo com isso
+    }
 }
 ```
 
-Vantagem: exclusão mútua implementada automáticamente, menos sujeito a erros.
-Desvantagem: necessário apoio do compilador
+Ademis, podemos usar semaforoes para problemas de **sincronização**.
 
-# Comunicação entre processos: envio de mensagens
+### Mutexes
 
-Podemos usar semaforos ou monitores para enviar mensagens entre processos, mas isso exige que eles compartilhem memoria.
+Um **mutex** é basicamente um semaforo binario, ou seja, ele pode ter dois estados, `unlocked`(> 0) e `locked`(== 0).
 
-Ademais, podemos fazer uma comunicação direta entre processos, com `Send(destino, mensagem); Receive(fonte, &mensagem)`.
+Quando um processo precisa acessar a SC ele chama `mutex_lock`. Se a mutex esta atualmente destravada, ou seja, a SC esta libre e pode ser usada, o processo pode entrar nela. Caso contrario, o processo aguarda ate que a SC critica fique libre e o processo que esta la dentro invoque `mutex_unlock`.
 
-As mensagens tem algumas caracteristicas/questões:
+Se varios processos desejam esntra na mutex, um deles é escolhido de forma aleatoria para entrar.
 
-- Comunicação síncrona ou assíncrona?
-    - Síncrona: como uma chamada de telefone. Quando um envia a mensagem, o outro já recebe.
-    - Assíncrona: como uma carta. Quando um envia a mensagem, o outro pode receber depois de algum tempo.
-- Confirmação
-    - Mensagem de confirmação para certificação de entrega.
-    - Retransmissão se certificação for muito demorada.
-    - Mensagens duplicadas devem ser ignoradas (contar mensagens). Isso é necessário porque, se uma mensagem demorar muito, ela pode ser reenviada. Porém, no final, ambas podem chegar.
-- Endereçamento
-    - Serve para identificar se há comunicação entre máquinas.
-    - processo@maquina, processo@maquina.dominio
-- Autenticação: criptografia
-- Eficiência quando na mesma máquina.
+A mutex é basicamente um inteiro modificado. Quando um processo invoca `down(mutex)` duas coisas podem acontecer:
 
-## Problema: Filosofos comilões
+- A mutex tem valor == 1: ou seja, o processo pode entrar nela. Em uma intrução atomica essa checagem e feita e o valor da mutex é setado para 0. Assim, outros processos sabem que existe uma processo na SC.
+- A mutex tem valor == 0: isso quer dizer que algum processo esta na SC e que o processo atual deve aguardar ate sua vez.
+
+Após sair da sessão critica, é necessario que o processo invoque `up(mutex)`, ou seja, que incremente o valor da mutex.
+
+O peseudo-codigo pode ser definido assim:
+
+```c
+
+// codigo do down
+if (mutex > 0) {
+    mutex--;
+    roda_processo();
+}
+else
+    processo_espere;
+
+// codigo do up
+mutex++;
+
+```
+
+### Monitores
+
+Proposta mais robusta que o semaforo, que visava oferecer um *pacote*, um objeto, com tudo já pronto, somente para o programador invodar e usar. Com isso, o monitor ia ter que ser algo implementado a nivel de compilador.
+
+### Envio de mensagens
+
+Esse metodo de comunicação entre processos tem 2 primitivas, `send(destination, &message)` e `receive(source, &message)`, com o utlimo podendo especificar se quer receber a mensagem de alguem especifico ou de qualquer fonte.
+
+#### Problemas nos sistemas de envio de mensagens
+
+O processo de troca de mensagens pode se tornar um pouco diferente dos casos anteriores. Por exemplo, quando a troca de mensagens é feita atravez de uma rede, existe o perigo de que tal mensagem seja perdida. Para superar este perigo o *receiver*, após receber a mensagem, manda uma mensagem de **acknowledgement** para o *sender*, avisando que tudo deu certo. Caso, apos um dado periodo de tempo, o sender não receba essa mensagem, ele retransmite a mensagem original.
+
+Agora imagine que a mensagem de *acknowledgement* foi perdida, agora, o sender tera mandado duas copias iguais da mesma mensagem. É necessario, então, que o *receiver* saiba destinguir mensagens repetidas. Isso pode ser feito atribuindo uma sequencia de numeros para cada nova mensagem do sender, assim, caso o receiver receba duas mensagem com numeros iguais, ele sabe que recebeu uma mensagem repetida.
+
+#### Problema produtor-consumidor no envio de mensagens
+
+Vamos ver como solucionar esse problema usando o envio de mensagens e nenhuma memoria compartilhada. Vamos assumir que todas as mensagens tem o mesmo tamanho e que as mensagens enviadas e ainda não recebidas são colocadas, automaticamente, em um buffer. Seja `N` o numero de mensagens enviadas.
+
+- O consumidor começa enviado N mensagens vazias para o produtor
+- Quando o produtor precisa enviar uma mensagem, ele pega uma vazia, coloca a mensagem e a envia de volta para o consumidor.
+
+Dessa maneira, o numero de mensagens no sistema permanece constante. O que faz com que a memoria alocada para este recurso tambem seja constante.
+
+```c
+
+#define N 100 // number of slots in the buffer
+
+void producer(void) {
+    int item;
+    message m;
+
+    while (TRUE) {
+        item = produce_item( );     // gerando algo para colocar no buffer
+        receive(consumer, &m);      // espera mensagem vazia chegar
+        build_message(&m, item);
+        send(consumer, &m);         // envia mensagem para o consumidr
+    }
+}
+
+void consumer(void) {
+    int item, i;
+    message m;
+
+    for (i = 0; i < N; i++)         // enviando mensagens vazias
+        send(producer, &m);
+    while (TRUE) {
+        receive(producer, &m);      // espera ate receber uma mensagem
+        item = extract_item(&m);
+        send(producer, &m);         // manda mensagem vazia para o produtor
+        consume_item(item);
+    }
+}
+```
+
+Agora, vamos olhar como as mensagens são endereçadas. A primeira maneira é fazer com que cada processo tenha um endereço e fazer com que as mensagens sejam enviadas paras esses endereços. Outra maneira é utilizar a estrutura de dados chamada **mailbox**, que guarda uma certa quantidade de mensagens. Assim, um processo pode enviar/receber mensagens de uma *mailbox*. Analogamente, caso um processo queira enviar uma mensagem para uma que esta cheia ele tem que espera, e caso ele queira pegar uma mensagem de uma que esta vazia ele tambem tem que esperar.
+
+A maneira extremamente oposta á *mailbox* é chamada de **rendezvous**. Com ela, fazemos a comunicação ser direta, sem nenhum buffer. Assim, caso um processo A queira enviar uma mensagem para o precesso B, ele vai ficar bloqueado ate que o processo B faça a invocação de `receive`. O comportamento é analogo para o recebimento.
+
+Essa é a *approach* que o MINIX usa para os processos internos. Para os processos de usuario, o MINIX usa  um *PIPE* como mailbox.
+
+## Problemas classicos de comunicação entre processos
+
+### Filosofos comilões
+
+Cinco filosofos estão sentados numa mesa circular. Cada filosofp tem um prato de comida. Enter cada par de pratos existe um garfo e para comer, um filosofo precisa de 2 garfos.
+
+A vida de um filosofo pode ser resumida em 2 ações, comer e pensar. Quando um filosofo esta com fome, ele tentar pegar os garfos a sua esquerda e a sua direita para comer. Depois disso, ele os coloca de volta na mesa.
+
+A ideia é fazer um programa que resolva esse problema e que nunca fique preso, ou seja, que nunca sofra **starvation**.
+
+Na pratica, muitos problemas desse tipo são resolvidos fazendo com que processos (filosofos) esperam quantidades aleatorias de tempo. Porém, vamos fazer uma solução definitiva e correta.
+
+A primeira solução é a seguinte:
+
+```c
+#define N 5         // numero de filosofos
+int mutex;          // controle de acesso a SC
+
+void philosopher (int i) {  // numero do filosofo
+    while (1) {
+        think();
+        down(mutex);        // entra na SC
+        take_fork(i);
+        take_fork((i+1)%N);
+        eat();
+        put_fork(i);
+        put_fork((i+1)%N);
+        up(mutex);          // sai da sessão critica
+    }
+}
+```
+
+O unico *problema* dessa solução é que somente 1 filosofo conseuge comer por vez.
+
+### Problema dos leitores e escritores
+
+Problema que tem uma analogia pratica em banco de dados. Quando se tem processos fazendo consultas e alterações no DB.
+
+Nessa solução, o primeiro leitor á ter acesso ao banco faz `down` no semaforo `db`. Em seguida, os proximos leitores devem incrementar um contador `rc`. Quando um leitor terminar ele decrementa o contador e, caso ele seja o ultimo, da um `up` no semaforo, avisando que um escritor pode entrar.
+
+```c
+
+typedef int semaphore;
+semaphore mutex = 1;
+semaphore db = 1;
+int rc = 0;                         // numero de processos lendo ou querendo ler
+
+void reader (void) {
+    while (TRUE) {
+        down(&mutex);               // acesso exclusivo ao leitor
+        rc++;                       // aumenta o contador de leitores
+        if (rc == 1) down(&db);     // primeiro leitor avisa que nao pode escrever
+        up(&mutex);                 // sai da SC
+        read_data_base( );          // le
+        down(&mutex);               // SC novamente
+        rc--;                       // diminui # leitores
+        if (rc == 0) up(&db);       // ultimo avisa que pode escrever
+        up(&mutex);                 // sai da SC
+        use_data_read( );
+    }
+}
+
+void writer(void) {
+    while (TRUE) {
+        think_up_data( );           // sessao nao critica
+        down(&db);                  // tenta obter acesso
+        write_data_base( );         // faz mudança
+        up(&db);                    // avisa que saiu
+    }
+}
+```
+
+O *problema* da solução acima é que ela favorece os leitores. Enquanto processos estiverem lendo nenhu escritor pode trabalhar no banco de dados.
 
 
+## Escalonamento
 
-# Escalonamento de processos
+Quando muitos processos estão prontos para executar, eles competem pelo uso da CPU. Para manejar isso, precisamos do **escalonador**, que vai executar um **algoritmo de escalonamento.**
 
-Quando se tem vários processos é necessária uma política para escolher o próximo processo a ter o controle da CPU. Tais politicas tem 4 objetivos:
+### Comportamento dos processos
 
-- Justiça: todos os processos devem ser executados
-- Eficiencia: CPU deve ser utilizada 100% do tempo
-- Tempo de resposta: usuarios iterativos não devem notar latencia
-- Fluxo: Maximizar o numero de processos que são finalizados (BATCH)
+Quase todos os processos alternam sua execução entre computar algo e fazer alguma *request* de I/O (entra em estado bloqueado esperando o trabalho de outro dispositivo) . Algumas operações de I/O contam como computação, por exemplo, quando a CPU copia dados para a *video RAM* para atualizar o que esta sendo mostrado na tela.
 
-Porém, temos um problema principal: processos são imprevisiveis, ou seja, não podemos determinar em quanto tempo um processo ira terminar.
+Quando um processo gasta mais tempo computando algo, ele é **compute-bound**. Caso ele gaste mais tempo esperando I/O ele é **I/O-bound**. Com o aumento do poder de processamento das CPU's os processos tendem a se tornar mais IO-bound.
 
-Damos o nome de **processos BATCH** para um coleção/lista de comandos que são executados em sequencia e que, normalmente, não requerem intervação do usuario.
+### Quando escalonar
 
-Para evitar que o sistema fique sempre executando processos do usuario, praticamente todos os SOs possuem uma interrupção periodica do relogio, com isso, toda vez que o relogio da um *tick* o processamento é parado, empilhando PSW e PC e em seguida dando um jump para o codigo que dara controle ao escalonamento de processos.
+Temos 2 situações em que o escalonamento pode acontecer:
 
-Damos os nome de **preempção** ao ato de interromper, temporariamente, um processo que esta sendo executado, para que outro seja executado no seu lugar. Essa troca de tarefa é conhecida como **troca de contexto**. Essa troca ocorre ao custo de um overhead, pois, no minimo, o estado do processo atual deve ser salvo.
+1. Qaundo um processo termina
+2. Quando o processos esta bloqueado por IO ou por algum semaforo
 
-A seguir, veremos alguns algoritmos de escalonamento
+Temos outras 3 ocasiões em que o escalonamento tambem acontece:
 
-## Data limite
+3. quando um novo processo é criado.
+4. quando uma interrupção para IO acontece (algum dispositivo de IO pode ter compleado seu trabalho e algum processo que estava esperando por isso pode rodar)
+5. quando uma parada de relogio (clock interrupt) ocorre
 
-Tem como base o tempo real. O processo, ao iniciar, determina quando sua tarefa precisa estar completa. Esse planejamento é muito complexo, pois envolve a cuidadosa estimativa de uso dos recursos do sistema (disco, CPU, etc). Isso cria um **puta overhead**, pois os sistemas que possuem esse tipo de escalonamento usam sua CPU **apenas** para poder realizar essas estimativas.
+O ultimo caso serve para decidir se um processo esta sendo executado por muito tempo. Um escalonamento **não-preeptivo** escolhe um processo para executar e o executa ate que ele seja bloquado ou libere a CPU. Um algoritmo **preemptivo** escolhe um processo e o excuta por um certo periodo de tempo, apos esse periodo o processo é suspenso e outro é executado em seu lugar.
 
-## FIFO
+### Categorias de escalonamentos
 
-Famoso *first in first out*. É bem basico e seu uso so parece razoavel em sistemas BATCH.
+Em diferentes ambientes, diferentes tipos de escalonamentos são necessarios.
 
-## Shortest job first
+1. **Batch**: onde não existem usuarios esperando pela resposta. Reduz as trocas de contextos, assim, são escalonamentos não-preemptivos ou que preemptivos que possui um periodo de processamento muito alto.
 
-Escalonamento que pega o processo com menor tempo de execução. Para isso, cada processo deve dar uma estimativa do seu custo. É ruim porque os processos pequenos podem ficar rodando para sempre e os maiores nunca vão conseguir serem executados.
+2. **Iterativo**: Para lidar com varios usuarios, preeptivo.
 
-## Shortest remaining time first
+3. **Tempo real**: Preeptivo, executa processos pequenos que sabem a hora de parar.
 
-Especialização do anterior, que melhora a justiça. O processo que tem o menor tempo até seu termino volta a ser/é executado.
+### Objetivos do escalonamento
 
-## Round-Robin
+- Todos os tipos
+    - Fairness: Todos os processos tem uma fatia da CPU
+    - Policy enforcement: a politica definida é aplicada
+    - Balance: mantem todas as partes do sistema ocupadas
 
-Fila circular, revezamento estrito.
+- Sistemas batch
+    - Throughput: maximiza trabalhos por hora
+    - Turnaround time: minimiza tempo entre submissão e termino
+    - CPU utilization: mantem a CPU ocupada o tempo todo
 
-## Multi-level queues
+- Sistemas iterativos
+    - Response time: responde **requests** rapidamente
+    - Proportionality: atende usuario
 
-## Multi-level feedback queues
+- Sistemas tempo-real
+    - Meeting deadlines: evita perder dados
+    - Predictability: evita degradação dos dados
 
-## Escalonamento garantido
+### Escalonamentos em sistemas batch
 
-Tenta dar a cada USUÁRIO uma fatia igual de tempo, onde o tempo do usuário rea := tempo desde login / n. Escolhe processo de usuário com fatia real mais distante do real, ou seja, dá prioridade para o usuário que usou uma pequena fatia de tempo em comparação com outros usuários.
+Algoritimos usados por sistemas batch
 
-## Sistemas multiprocessados
+#### first-come first-served
 
-Diferente de multiprogramação (que tinha múltiplos programas na mesma CPU). Agora, temos também múltiplas CPUs, múltiplos cores e processadores em hyper-threading (que extrai e decodifica instruções (do ciclo fetch-decode-execute) duas instruções ao mesmo tempo. A execução, porém, continua em um só). Porém, os mesmos algoritmos e aplicam, com as seguintes caracteristicas:
+Algoritimo mais simples e não preemptivo. Processos usam a CPU na ordem em que a pedem, como uma fila simples, em que se aplica *ordem de chegada*.
 
-- Assume-se SMP (simetrical multi processing)
-- Todos têm acesso à memória e aos mesmos recursos
-- Cada processo vê como se houvesse apenas uma linha, uma stream de execução
-- O Kernel tem mais interrupções (das várias CPUs/cores),  mandando os processos para uma delas conforme o caso.
+#### Shortest job first
 
-### Afinidade de processos
+Esse metodo assume que os tempos de execução são conhecidod de antimão. Assim, os escalonador escolhe o processo que demora menos tempos para ser executado.
 
-**Hard affinity:** sistema garante que processo rodam no mesmo processador/core
+#### Shortest remaining time first
 
-**Soft affinity**: sistema tenta na mesma CPU mas pode mudar processo para outra CPU
+Similar ao de cima, so que nesse caso, o escalonador pega o proximo que esta mais proximo de ser executado.
 
-- Melhor que CPU sem nada a fazer
-- Sistema tenta balanceamento de cargas nas CPUs de maneira que cada um tenha processos suficientes.
-- Push-migration: SO verifica periodicamente carga em cada processador (número de processos na fila) - muda se houver desbalanceamento.
-- Pull-migration: escalonador verifica sua fila. Se estiver vazia, procura na fila de outros processadores e "rouba" processos (cada um tem um escalonador).
-- O Linux combina pull e push.
+#### Three-level scheduling
 
-# Deadlocks
+Quando um trabalho chega, ele é colocado numa fila de entrada no disco. O **admission scheduler** decide qual trabalho pode entrar no sistema (ele tenta fazer uma mix entre trabalhos IO-bound e compute-bound), o restante continua na fila esperando. Quando um trabalho entra no sistema um processo é criado para que ele possa ser executado na CPU.
 
-Competiçãopor recursos (ex, dispositivos, arquivos, plotters, canais de comunicação, etc). Ocorre quando temos regiões críticas - que não podem ser compartilhados e só um processo pode usá-lo por vez. Os deadlocks são um IMPASSE que ocorre nesse sistema - quando um processo P1 precida de dois recursos, R1 e R2, e o processo P2 precisa dos mesmos recursos. Se P1 pegar R1, e P2 pegar R2, eles entram num IMPASSE. Nem P1 terminará, liberando R1 para P2 terminar,  nem P2 terminará, liberando R2 para P1 terminar.
+Todavia, o numero de processos podem ser tão grande que todos eles não cabem na memoria principal. Com isso, alguns processos tem que ser armazenados no disco, quem faz isso é o **memory scheduler**. Com ele, podemos decidir o **grau de multiprogramação**, ou seja, a relação entre processos que ficam na memoria principal e no disco. Para tomar a decisão sobre quais processos manter em cada lugar, ele leva os seguintes fatores em consideração:
 
-Existem 4 condições NECESSÁRIAS para que os impasses ocorram:
+1. quanto tempo faz que tal processo mudou de lugar
+2. quanto tempo de CPU tal processo teve
+3. qual grande é tal processo
+4. quão importante é tal proceso.
 
-- **Exclusão mútua**: cada recurso pode apenas ser designado a um processo.
-- **Espera e segura**: processo que requisitaram recursos previamente podem requisitar novos.
-- **Não preempção**: recursos previamente designados a processo não podem ser retirados. Os processoprecisam liberá-los explicitamente.
-- **Espera circular**: deve existir um conjunto de 2 ou mais processos que podem ser organizados em uma lista circular, onde cadaprocesso está esperando um recurso do processo anterior.
+O proximo nivel de escalonamento é realizado pelo **CPU scheduler**, que pega o proximo processo pronto para ser executado, nele, qualquer algoritmo de escalonamento pode ser executado, preemptivo ou não.
 
-Métodos de solução:
+### Escalonamento em sistemas iterativos
 
-- **Ignorar o problema (método avestruz)**: Se acontecer, o sistema pode ser reiniciado
-- **Detecção**: Mantém o grafo de recursos. Toda vez que um recurso for criado, é necessário checar o grafo e matar um dos  processos que o querem.
-- **Prevenção**: Ataca uma das condições necessárias (Havender)
-    - Espera e segura (wait for) - programa requisita todos os recursos de uma só vez
-    - Não preempção - se não consegue um recurso libera todos
-    - Espera circular - numerar os recursos e alocar sempre em ordem
+Note que, todos os metodos de escalonamento para sistemas batch tambem podem ser usados para sistemas iterativos.
+
+#### round-robin
+
+Nesse escalonamento, cada processo recebe uma quantidade de tempo, um **quantum**, na qual ele pode ser executado. Se o processo continua rodando ao fim do seu tempo, ele é interrompido e outro processo é executado em seu lugar. A unia coisa que o escalonador precisa fazer é manter uma lista de processos executaveis, quando o quantum de um processo acaba ele é colocado no fim da fila, com um novo quantum. Temos o seguinte desequilibrio:
+
+1. um quantum pequeno faz com que a CPU gaste muito tempo realizando trocas de contexto
+2. um quantum grande pode fazer com que requisições iterativas (coisa que o usuario faz e recebe) sofram atrasos.
+
+Por padrão, definimos um quantum entre 20 e 50msec.
+
+#### priority scheduling
+
+Aqui, cada processo recebe um prioridade, e o processo com maior prioridade tem o direito de ser executado. Para previnir que processos sejam executados para sempre, o escalonador pode diminuir a prioridade do processo atual a cada *tick* do relogio. Ademais, podemos definir um quantum para cada processo, assim, quando o quanto do processo atual acabar, o proximo processo com a mesma prioridade é executado.
+
+É conveniente agrupar processos de mesma prioridade e realizar escalonamento round-robin neles. É isso que o minix usa, com 16 classes de prioridade. Ele coloca como maior prioridade: drivers IO, servidores de memoria, sistema de arquivo e rede. Processos de usuario tem uma prioridade menor em realçao aos componentes do sistema.
+
+### Escalonamento em sistemas de tempo real
+
+Normalmente componentes extenos se comunicam com o computador, que deve criar uma resposta em um curto periodo de tempo. Tais sistemas são categorizados em 2 tipos:
+
+- **hard real time**: existem prazos absolutos que devem ser respeitados
+- **soft real time**: existem prazos mas da pra dar uma varzeada neles
+
+## Visão geral de processos no MINIX
+
+Ao contrario do UNIX, que tem um kernel monolitico, o MINIX é uma coleção de processos que se comunica um com o outro, atraves de mensagens. Essa estrutura torna o sistema mais flexivel e mutavel.
+
+### Estrutura interna do MINIX
+
+O MINIX é estrututurado em quatro camadas, que executam suas funções de forma bem definida.
+
+O **kernel** esta a camada de baixo (1). Realiza o escalonamento de processos e a suas respectivas transições de estados. Além disso, lida com a comunicação entre processos, passando as mensagens. Ele tambem oferece o suporte para as interrupções de IO, que requer uso de um conjunto de instruções privilegiadas do processador, **kernel mode**. Nessa camada tambem temos a **clock task**, que gera sinais de tempo utilizados pelo kernel. Uma das principais atividades dessa camada é prover um conjunto de **kernel calls** para drivers e servidores acima, cuja implementação é feita pela **system task**. Entretando, mesmo que essas duas ultimas **tasks** sejam compiladas no mesmo espaço do kernel, elas são escolanadas como processos separados.
+
+O kernel trata as 3 camadas acima dele da mesma maneira. Cada uma delas é limitadas por um conjunto de instruções pertencentes ao **user mode**, alem disso, elas não podem acessar porções de memoria fora de seus limites.
+
+Processos podem ter privilegios especiais. O processos na camada 2 tem muitos privilegios, os da camada 3 alguns privilegios e os da camada 4 não tem nenhum privilegio especial.
+
+A camada 2 possui os **devices drivers**, que basicamente são os mecanismos de fazer IO.
+
+A camada 3 possui os **servers**, que produzem o ferramentario utilizados pelos procesos de usuario.
+
+A camada 4 possui todos os processos de usuario.
+
+Camada | O que acontece |
+:--- | :--- |
+4-user processes | init, user process |
+3-server processes | process manager, file system, info server |
+2-device drivers | disk driver, tty driver, ethernet driver |
+1-kernel | kernel, clock task, system task |
+
+É importante notar a diferença entre as **kernel calls** e as **POSIX system calls**. As kernel calls são funções em baixo nivel disponibilizadas pelo system task para permitir que drivers e servidores façam seu trabalho, como por exemplo, ler a porta IO de um dispositivo. Ja as POSIX system calls (read, fork, ...) são definidas pelo padrão POSIX e estão disponiveis para os programas de usuario da quarta camada.
+
+### Gerenciamento de processos
+
+Sabemos que um processo pode criar outro processo. Dito isso, todos os processos de usuarios são criados pelo processo **init**.
+
+#### MINIX startup
+
+Em muitos computadores com discos, temos uma hierarquia de **boot disk**, em que a imagem de inicialização é procurada no primeiro dispositivo definido. Um HD é dividido em partições, a primeira sessão possui um pequeno programa e a **tabela de partição** do disco, essas duas peças formam o **master boot record**. O pequeno programa é executado para ler a tabela de partições e selecionar a **active partition**, que possui um *bootstrap* em seu inicio, que executada a fim de achar e realizar a copia do programa **boot image**.
+
+Esse programa contem: o kernel (junto com clock e system task), o process manager e o file system. Alem disso, pelo menos um driver de disco deve ser caregado, junto com alguns outros programas: reincarnation server, ram disk, console e init.
+
+Todas as partes da boot image são programas separados, que são executados separadamente depois que o kernel, PM e FS são carregados. Isso torna o sistema tolerante a falhas de inicialização.
+
+#### Inicialização da arvore de processos
+
+**Init** é o primeiro processo de usuario e o ultimo a ser carregado pela boot image, é filho do reincarnation server e recebe o PID 1. O PM é inicializado antes e recebe PID 0. O init executa o script em `/etc/rc` que inicia drivers e servidores adicionais.
+
+### Comunicação entee processos no MINIX
+
+Temos 3 chamadas principais:
+
+- send(dest, &message): manda mensagem para o processo dest
+- receive(source, &message): recebe mensagem de uma fonte ou de qualquer lugar
+- sendrec(src_dst, &message): manda mensagem e espera pela resposta, sobrescrevendo a original
+
+O fluxo normal de mensagens é para baixo, e mensagens podem ser mandadas para processos na mesma camada ou em camadas adjacentes. Quando um processo manda mensagem para outro que não a esta esperando ele fica bloqueado ate que destinataria a receba.
+
+Se um processo A tenta enviar para B e se bloqueia, e B tenta enviar para A e se bloqueia, temos um deadlock.
+
+Temos outra função importante para a transmissão de mensagens, `notify(dest)`, que avisa para dest que algo importante aconteceu, mas não bloqueia o processo que invocou. A informação passada é minima, apenas o ID do processo invocador e um *time stamp*. É usada, por exemplo, pelo teclado para avisar que uma das teclas de função (F1...f12) foi apertada. Tal função é principalemente usadas por precessos de sistema, e como eles são poucos, cada processo possui um *bitmap* de notificações, assim, quando um processo A notifica um processo B, o bit relativo ao processo A é ligado no bitmap de notificações de B, tal bitmap fica no kernel.
+
+### Escalonamento de processos do MINIX
+
+O sistema de interrupção é o que faz a multiprogramação acontecer. Interrupções tambem são geradas por software, as **traps**. As operações de `send` e `receive` são traduzidas pela biblioteca do sistema como interrupções de software.
+
+O minix implementa um sistema de **multilevel queues**, com 16 prioridades definidas. A fila mais baixa é a *IDLE*, que é executada quando não se tem nada mais pra fazer. Clock e system tasks são colocadas nas filas de maior prioridade. Ja os drivers e servidores ficam entre a prioridade dos processos de usuarios e a de clock task.
+
+O quantum não é o mesmo para todos os processos. Os processos de usuario possuem um quantum menor, enquanto drivers e servidores recebem um quantum grande. Quando o quantum de um processo acaba ele é redifinido e colocado no fim da fila.
+
+Se um processo que usou todo seu quantum tambem foi o ultimo a ser executado é sinal que temos um loop. Para resolver isso, o colocamos no final de uma fila de menor prioridade. Porem, se um processo acaba com seu quantum mas não impediu que outro processo fosse executado, ele pode ter sua prioridade aumentada.
+
+## Implementação de processos no MINIX
+
+NÃO RESUMI ESSA PARTE (PG 125-192)
+
+## System task no MINIX
+
+Uma consequencia de fazer grandes componentes do sistema fora do kernel é que elas serão proibidas de realizar IO, de manipilar tabelas do kernel etc. A solução para este problema é que o sistema ofereça um conjunto de serviços para os drivers e servidores. Tais serviçõs, que não são disponiveis para os processos de usuario, permitem realizar operações como se eles estivessem dentro do kernel.
+
+Essas operações especiais são lidadas pela **system task**, que recebe essas requisições e as encaminha para o kernel.
+
+No MINIX, as *system calls* realizadas pelos processos de usuarios são tranformadas em mensagens para os servidores. Os servidores então se comunicam entre eles e tambem com o kernel, atravez de mensagens, tais mensagens são recebidas pela systask. Vamos chamar esse ultimo tipo de mensagem de **kernel calls**.
+
+Por exemplo: `fork()` é uma syscall que é encaminhada para o PM. O PM faz algum trabalho e então faz a chamada `sys_fork` para a system task, que então vai manipular o kernel.
+
+A systask aceita 28 tipos de mensagens (kernel calls).
+
+## Clock task no MINIX
+
+Relogio é essencial para impedir que um processo monopolize a CPU. É executado no espaço do kernel é não pode ser acessada por um processo de usuario.
+
+### Clock hardware
+
+O relogio que realiza a interrupção é feito no hardware, usando o conhecimento de engenheiros. Mas é basicamente um contador que vai decrescendo. Quando chega á 0 ele faz um **clock tick**.
+
+### Clock software
+
+O que fazer com o tick gerado pelo hardware fica em cargo do clock driver. Esse driver basicamente cuida de guardar a hora do dia e de fornecer aparato para a CPU/escalonador.
+
+# Input/Output
+
+Uma das principais funções do istema operacional é controlar os dispositivos de entrada e saida, criando uma interface na qual eles possam se comunincar.
+
+## Principios do hardware de IO
+
+Neste livro, estamos interessados em olhar a parte de programação desses dispositivos, a qual esta intimamente ligada com o que ele faz.
+
+### IO devices
+
+Podemos dividir os dispositivos em duas categorias:
+
+- **block devices**: armazena sua informação em blocos de tamanho fixo, cada um com seu proprio endereço. A propriedade essencial desses dispositivos é que existe a possiblida de ler e alterar tais blocos de maneira independente. Discos são os maiores representantes.
+- **Character devices**: esse tipo de dispositivo entrega/recebe um fluxo de dados, não é endereçavel e não possui nenhuma operação de busca. Impressoras, mouses e etc.
+
+O sistema de arquivos lida com abstrações de dispositivos de blocos, deicando a parte que faz a comunicação direta com o hardware para um software mais baixo, o **device driver**.
+
+Os dispositivos variam bastante em relação a velocidade de transmissão dos dados, deixando em cargo do software lidar com essas diferenças.
+
+### Device controllers
+
+O componente eletronico de um dispositivo é chamado **device controller** ou **adapter**, esse controlador faz a ligação entre a parte mecanica e a digital do dispositivo, normalmente a programação é feita em uma linguagem de baixo nivel. Os dispositivos são normalmente conectados á placa mãe, e uma enterface entre ela e o dispositivo normalmente segue um padrão oficial ANSI, IEEE ou ISO.
+
+Os SO se comunicam apenas com os controladores dos dispositivos. A maioria dos computadores utilizam o modelo de *bus*, que é basicamente uma unica linha de conexão entre os dispositivos e a CPU.
+
+### Memory-mapped IO
+
+Cada controlador possui alguns registradores que são utilizados para fazer a comunicação com a CPU, assim, o sistema operação consegue requisitar ações do dispositivo escrevendo nestes registradores.
+
+Muitos dispositivos tambem possuem um **data buffer**, no qual o SO pode escrever coisas que serão feitas. Os monitores possuem uma VRAM que armazena oq sera exibido.
+
+Para que a CPU se comunique com esses registradores e buffers temos duas alternativas. A primeira alternativa faz com que cada registrador de cada controlador possua uma **IO port number**, ou seja, um endereço em que se pode ler/escrever. A segunda opção é fazer que os registradores façam parte do espaço normal de memoria, chamamos isso de **memory mapped IO**, assim, quando uma operação é feita temos uma epecie de `if (isIO) else if (isNormalStuff)` que separa o que deve ser acessado da memoria e o que deve ser feitos em controladores.
+
+### Interrupções
+
+Registradores dos controladores possuem alguns **status bits** que podem ser testados para saber se uma requisição de dados ja foi completada ou se novos dados de um *input device* estão disponiveis.
+
+A CPU pode ficar testando esses bits ate que o dispositivo esteja pronto para receber/enviar novos dados, esse processo é chamado de **polling** ou **busy waiting**. Tal processo não é muito bom, e so é recomendado para sistemas pequenos que não possuem muitos processos.
+
+Muitos controladores utilizam interrupções para dizer a CPU que ele esta pronto para enviar/receber algo, para isso eles utilizam a linha especial de IRC (Interrpt ReQuest) do *bus system*, porem, o numero dessas linhas é limitado é podem haver conflitos entre dispositvos. Isso levou a industrua a desenvoler o **plug'n play**, na qual a BIOS decide qual dispositivo vai usar cada IRC, em tempo de boot.
+
+## Principios de IO software
+
+Vamos ver as coisas do ponto de vista do SO
+
+### Objetivos do IO software
+
+O principal conceito é o de **device independence**, ou seja, de que um programa possa acessar qualquer dispositivo, sem que isso tenha que ser definido de antemão. Um programa que le um arquivo deveria poder ler tal arquvio de um disquete, de um disco ou de um CD-ROM, sem ter que ser modificado para cada um. Deve ser resposabilidade do SO cuidar da diferenciação de cada um, de saber quais comandos podem/devem ser utilizados.
+
+Alem disso, temos o conceito de **uniform naming**, o qual define que o nome de cada dispositivo deve ser simplesmente uma string ou numero. No UNIX e MINIX todo tipo de disco podem ser itegrado na hierarquia do sistema de arquivos.
+
+Outro problema é o de **error handling**, que deve tentar ser tratado pelos niveis mais inferiores (controladores e drivers), so devendo ser passado para os niveis mais altos em ultimo caso.
+
+Outra questão é a de tranferecias **sincronas** (blocking) vs **assincronas** (interrup driven). A maioria das operações IO fisicas são assincronas, a CPU começa a tranferencia e vai fazer outra coisa. Programas de usuario funcionam de modo mais simples caso a tranferecias seja feita atravez de bloqueio, por exemplo, quando um programa é avisado que recebeu algum dado de algum dispositivo ele é suspenso ate que toda essa infromação esteja disponivel em um buffer.
+
+Outros dois problemas são **beffering**, informação tem que ser guardada temporiareamente ate ser usada, e **compartilhabilidade**, se mais de um usuario pode ter acesso ao device.
+
+O software de IO é organizado em 4 camadas:
+
+- User-level I/O software
+- Device-independent operating system software
+- Device drivers
+- Interrupt handlers
+- Hardware
+
+### Interrupt handlers
+
+Um driver que começa uma operação IO fica bloqueado ate que essa operação seja concluida, quando essa operação termina uma interrupção acontece. Quando a interrupção é feita, o *handler* faz oq for preciso para que tudo ocorra adequadamente, então ele pode desbloquar o driver que o invocou. Esse modelo funciona bem se os drivers forem tratados como processos.
+
+### Device drivers
+
+Cada dispositivo precisa de uma API especial para que possa ser controlado, chamamos isso de **device driver**, é como se fosse uma biblioteca que oferece uma abstração acerca do dispositivo, para aplicações que as usarão.  Um driver controla um unico dispositivo ou uma familia de dispositivos muito semelhantes.
+
+Na maioria dos sistemas, esses drivers fazem parte do kernel, por motivos de performance. No MINIX, os drivers são separados e executados como processos de usuarios, por motivos de confiabilidadde.
+
+A maioria dos SO definem uma interface padrão na qual dispositivos de bloco e caracteres devem suportar, essa interface consiste em um conjunto de operações que o SO pode fazer uso.
+
+Depois que o driver recebe uma comando, ele checa se os parametros passados estão corretos. Apos tal checagem, ele traduz esses comandos para algo que faça sentido para o controlador, ou seja, começa a escrever nos registradores do controlador. Depois disso, duas coisas podem acontecer: o driver tem que esperar ate que o controlador faça algo, então ele se bloqueia e espera ate que uma interrupção aconteça e o desbloqueie; a operação termina sem *delay* e o driver não precisa ser bloquado.
+
+Em qualquer um dos casos, os driver checa se a operação foi feita corretamente e da um *feedback* para a aplicação no nivel acima.
+
+O papel do driver tambem pode ser inicializar o dispositivo no *startup* do SO, lidar com o plug'n play ou realizar logs.
+
+### Device-independent IO software
+
+Uma grande parcela dos softwares de dispositivos IO não dependendem diretamente do dispositivo. No MINIX, a maioria desse software faz parte do file system. A função desse tipo de software é realizar operações que são comuns em todos os dispositivos e assim prover uma interface uniforme para as aplicações de usuario.
+
+A seguir, vamos olhar algumas resposabilidades do *device independent software*.
+
+#### Interface uniforma para drivers de dispositivos
+
+Um dos desafios é fazer com que os dispositivos e drivers sigam um padrão, assim, o SO não precisa ser modificado cada vez que um novo dispositivo for conectado.
+
+Outro aspecto dessa interface uniforme é a maneira em que os dispositvos são nomeados. O *device independent software* cuida de mapear um nome para o dispositivo itself. No UNIX e no MINIX, um dispositivo, por exemplo, `/dev/disk0` especifica unicamente o i-node para um arquivo especial. Nesse arquivo temos duas infromações:
+
+- **major device number**: Usado para localizar o driver apropriado, como se fosse sua identificação;
+- **minor device number**: Passado para o driver para esficificar a unidade em que se quer fazer a operação.
+
+Temos a questão de segurança, como garantir que um usuario não acesse dispositivos que ele não tem permissão de acessar? No UNIX e no MINIX os dispositivos aparecem como abjetos no sistema de arquivos, o que significa que as regras padrão de proteção (famoso *rwx bits*) são tambem aplicada aos devices.
+
+#### Buffering
+
+O *device independent software* tambem cuida do buffering apra dispostivos de bloco e de caracteres. Os dispostivos de bloco podem escrever/ler um bloco de uma vez so, assim, caso uma aplicação escreva só metade de um bloco, o SO normalmente vai guardar essa informação em um buffer e esperar a outra metade, para mandar so uma requisição pro device. Ja nos dispositivos de caracteres, podemos ter que esperar ate que os dados fornecidos por eles possam ser usados.
+
+#### Error reporting
+
+Erros são as coisas mais comuns em IO. Muitos erros são especificos dos dispositivos, então quem cuida deles é o driver. Porém, o restante dos erros é passado para o sistema, e quem cuida disso é um *device independent software*, tomando a atitude necessaria.
+
+#### Allocating and releasing dedicated devices
+
+Alguns dispositvos so podem ser usados por um processo, assim, o SO tem que decidir quem pode realizar ações no dispositivo em um dado momento.
+
+#### Device independent block size
+
+Um *device independent software* cuida de fazer com que os dispositivos tenham o mesmo tamaho de blocos para os softwares de alto nivel. Por exemplo, dois discos podem ter setores de tamanho diferentes, e o software faz eles parecerem que tem o mesmo tamanho de setor. A mesma coisa se aplica para dispositvos de caracteres, que podem transmitir diferentes quantidades de informações por vez.
+
+### User space IO software
+
+Uma porção do software de IO consiste de bibliotecas que são utilizadas por programas de usuario, por exemplo, a chamada `write(fd, buffer, nbytes)`, é uma syscall que implementa uma operação de IO.
+
+Porem, nem todos software de user-space-IO consiste de bibliotecas. Um exemplo é o sistema de **spooling**, que é uma maneira de lidar com dispositivos IO em um sistema de multiprogramação. Vamos analisar o caso de uma impressora. Para imprimir, é necessario escrever num arquivo especial, que então é lido e impresso. Porem, não podemos permitir que os processos acessem diretamente esse arquivo especial. O que fazemos é criar um **spooling directory**, assim, quando um processo quer imprimir algo, basta que ele coloque o arquivo a ser impresso neste diretorio. Criamos tambem um **deamon**, que vai ser o unico processo com permissão á modificar o arquivo especial da impressora, a resposabilidade do deamon vai ser a seguinte: ele vai ler todos os arquvios que estao no spooling directory e cuidar para que eles sejam impressos na ordem.
+
+## Deadlocks
+
+Vamos estudar os deadlocks no contexto do SO
+
+### Recursos
+
+Deadlocks podem acontecer quando processos tem acesso exclusivo á dispositivos, arquvios e etc. Vamos nos referir á qualquer um desses objetos como **recurso**.
+
+Recursos podem ser preemptivos (pode ser retirado do processo que o tem sem nehum efeito colateral) ou não-preemptivos (contrario), sendo o segundo o tipo mais comum para se ocorrer um deadlock, já que se temos um deadlock em um recurso preeptivo basta realoca-lo para um dos processos envolvidos. Existem 3 passos para se usar um recurso:
+
+1. pedir o recurso
+2. usar o recurso
+3. liberar o recursos
+
+### Principios de deadlocks
+
+Definição: **A set of processes is deadlocked if each process in the set is waiting for an event that only another process in the set can cause.**
+
+#### Condições para deadlocks
+
+Precisamos de 4 condições para um deadlock acontecer:
+
+- Exclusão mutua: Cada recurso ou esta em uso por exatamente um processo ou esta livre
+- Hold and wait: Processos que ja possuem recursos podem pedir mais recursos
+- Não preepção: Nenhum recurso dado á um processo pode ser tirado dele á força, ou seja, um recurso alocado so fica livre se o processo libera-lo
+- Circular wait: Precisa existir uma fila circular, onde cada processo espera u recurso do membro a frete
+
+#### Modelagem de deadlock
+
+Podemos ilustrar um deadlock como um grafo dirigido, onde:
+
+- Vertices redondos são processos
+- Vertices quadrados são recursos
+- Um arco recurso->processo significa que o recurso foi requisitado, concedido e esta em posse do processo
+- Um arco processo->recurso diz que os processo esta bloquado esperando por tal recurso
+
+Um deadlock é simplesmente um ciclo.
+
+### Algoritmo do avestruz
+
+Maneira mais simples de lidar com deadlocks, fingir que não existe nenhum deadlock. Um exemplo muito comum de deadlocks que poderiam acontecer mais são muito raros são os que podem acontecer por tamanho de tabelas (tabela de processos ou de arquivos). Imagine que a tabela de processos tenha so 100 posições livres, imagine tambem que temos 10 processos rodando e cada um vai dar fork em outros 12. Quando cada processo tiver dado fork em 9 processos a nossa tabela estara cheia, e todos os processos estarao em deadlock. Mas devemos mesmo nos preocupar com esse caso??
+
+### Detection and recovery
+
+Com essa tecnica para lidar com deadlocks, mantemos o grafo de alocação de recursos, assim, toda vez que um processo pede/libera um recurso, atualizamos o grafo. Caso haja algum ciclo no grafo (deadlock) simplesmente matamos um dos processos que o compoem, caso o ciclo continue, matamos outro processo, repetindo isso ate que o ciclo deixe de existir.
+
+Isso é normalmente feito em sistemas BATCH, quando matar e reinicializar um processo é aceitavel.
+
+### Deadlock prevention
+
+Essa solução proprõe estabeler restrições nos processos para impedir os deadlocks, ou seja, impedir uma das 4 condições acima de aconterem.
+
+- Impedindo exclusão mutua. Poderiamos fazer com que nenhum recurso fosse alocado para somente um processo, ou seja, poderamos fazer *spooling* para todos os recursos. Isso não funciona muito bem.
+
+- Impedindo hold and wait. Poderiamos impedir que um processo peça recursos no meio de sua execução e fazer com que ele declare todos os recursos que vai utilizar logo de inicio, assim poderiamos fazer um escalonamento previo, mas isso não funciona quando temos processos não deterministicos. Uma outra tentativa para acabar com essa condição é fazer que o processo libere temporiareamente todos os recursos alocados por ele ao pedir novos recursos.
+
+- Impedir a não-preepção. Tirar os recursos, mesmo que isso não gere resultados satifatorios.
+
+- Impedir a fila circular. Tentar achar uma numeração topologica para a execução do grafo.
+
+### Deadlock avoidance
+
+Agora vamos ver jeitos de impedir deadlocks com uma alocação sabia e segura de recursos, considerando que vamos ter algumas informações de cada processo.
+
+#### Algoritimo do banqueiro
+
+Definimos um estado como a quantidade de cada recurso que um processo tem e quer, assim como a quantidade livre de cada recurso. Assim podemos ter uma tabela, onde cada linha é um processo e cada coluna representa um recurso, alem de um vetor dizendo os recursos disponiveis.
+
+Um estado é **seguro** se podemos executar os processos em uma ordem tal que tudo seja satisfeito e respeitado.
+
+Assim, podemos ter um processo P1 que tem 2 recursos A e 1 recuros B, e que ainda precisa de 4 do recurso B. Ademais podemos dizer que existem 3 recursos A disponiveis e 8 recursos B disponivel. Esse estado seria seguro, pois P pode ser executado.
+
+A execução do algoritmo fica a seguinte:
+
+1. Procura por uma linha/processo P ainda não executado, tal que a qauntidade exigida de cada recurso seja menor que a disponivel. Caso esse processo não exista, temos um deadlock.
+2. Executo o processo P e acrescento os recursos que estavam sendo usados por ele nos recursos disponiveis.
+3. Repito 1 e 2 ate que todos os processos sejam executados.
+
+## Visão geral de IO no MINIX
+
+### Interrupt handlers e acesso IO no MINIX
+
+Muitos drivers de dispostivos inicializam o dispositivo de IO e então se bloqueiam, esperando ate que uma mensagem chegue, essa mensagem é enviada pelo **interrupt handler**.
+
+Temos 4 diferentes niveis de acesso que um *user-space device driver* pode querer.
+
+- Um driver pode precisar de acesso a memoria que nao esta em seu espaço. Por exemplo, o driver de memoria ram
+- Um driver pode precisar ler/escrever nas portas de IO, uma operação que so o kernel pode fazer
+- Um driver pode ter que responder a uma interrupção prevista.
+- Um driver pode ter que responder a uma interrupção não prevista
+
+Todos esses casos são suportados por kernel calls providas pelo systask.
+
+### Drivers de dispositvos no MINIX
+
+Para cada classe de dispositivos IO temos um device driver separado, que são processos. Tais drivers se comunicam com o sistema de arquivos atravez do sistema padrão de envio de mensagens.
+
+No MINIX, para um processo ler um arquivo, ele manda uma mensagem para o processo do sistema de arquivos. O FS entao manda uma mensagem para o *disk driver*. o DD então usa kernel calls para pedir ao systask que faça a verdadeira IO e copiar os dados entre os processos.
+
+Todos os drivers do MINIX funcionam da mesma maneira: recebendo mensagens. Para os dispotivos de bloco, temos, normalmente, os seguintes parametros na mensagem:
+
+- m_type : operação requisitada
+- DEVICE : minor device number
+- PROC_NR : processo requisitando IO
+- COUNT : contagem de bytes
+- POSITION : posição no dispositivo
+
+No UNIX, todos os processos tem 2 partes, uma parte do kernel e outra do user-space. Logo, os *device drivers* são apenas procedimentos no kernel que são invocados pela *kernel-space part* do processo.
+
+### Device-independent IO software in MINIX
+
+O processo do file system contem todo o codigo de *device independent IO*. Alem de lidar com a interface entre drivers, buffering e alocação de blocos, o FS tambem lida com a segurança e manutenção dos i-nodes, diretorios e _mounted file systems_.
+
+### User-level IO software in MINIX
+
+O MINIX tem todas os procedimentos de biblioteca requeridos pelo padrao POSIX. O *spooler deamon* é o **LPD**, que coloca um arquivo no spool de impressão atravez do comando `lp`.
+
+### Deadlock handling in MINIX
+
+O MINIX segue a mesma filosofia do UNIX com respeito ao tratamento de deadlocks: ele so ignora.
+
+## Dispositivos de blocos no MINIX
+
+Vamos discutir o RAM disk, hard disk e floppy disk.
+
+### Visão geral de *block device drivers* no MINIX
+
+O MINIX sempre tem 2 *block device drivers* compilados no sistema: o RAM disk driver e hard/floppy disk driver. O driver para cada dispositivo é compilado separadamente, mas uma biblioteca comum de codigo fonte é compartilhada entre eles.
+
+Um driver contem uma função com um loop infinito, que fica checando se uma mensagem chegou.
+
+Temos 6 operações que podem ser requisitadas á qualquer device driver, elas ficam no campos **m_type** da mensagem:
+
+| operação | Descrição
+| --- | ---- |
+| OPEN | Verifica se o dispositivo esta acessivel |
+| CLOSE | Verifica se não há nada em algum buffer para ser feito no dispositivo |
+| READ | Pega um bloco do device e coloca na memoria |
+| WRITE | Pega um blcoo da memoria e coloca no device |
+| IOCTL | Usado para pegar/mudar informações acerca do device |
+
+### Common block device driver software
+
+Definições que são utilizadas por todos os driver ficam em `drivers/libdriver/driver.h`.
+
+## RAM disks
+
+Vamos estudar em detalhes o memory driver, que é usado para permitir acesso a qualquer parte da memoria.
+
+### RAM disk hardware e software
+
+O RAM disk tem basicamente duas funções: escreve um bloco e lê um bloco.
+
+Em um sistema que tem suporte a **mounted files systems** temos um **dispositivo raiz** que esta sempre presente na mesma localização. Assim, sistemas de arquivos removiveis podem ser montados na arvore de arquivos, formando um sistema de arquivos integrado. Assim o usuario não precisa se preocupar em qual dispositivo esta cada arquivo.
+
+## Discos
+
+Todos os computadores modernos, execetos sistemas embarcados, possuem *disk drivers*.
+
+### RAID
+
+Acronomo de **redundant array of independent disks**. Uma maneira de implementar paralelismo no disk IO. Nesse sistema, temos que varios discos são conectados em paralelos e gerenciados por um **RAID controller**, assim, a sessão 0 fica com o disco 0, a sessão 1 fica com o disco 1 e assim por diante. Quanto escrevemos um arquivo, cada parte dele sera escrita em um disco diferente, de maneira simultanea.
+
+Ao ler um arquivo, o driver fica resposavel por colocar os pedaçoes em order para formar o arquivo correto, chamamos isso de **striping**.
+
+Poderiamos implemetar o *RAID level 1* e fazer com que aja 100% de redundancia, assim, caso um disco falhe, temos outro.
+
+## Terminals
+
+NÂO RESUMI
+
+# Memory management (MM)
+
+Nos computadores temos uma **hierarquia de memoria**. A memoria cache é a mais rapida, mas a mais escassa. A memoria RAM é rapida e consiguimos ter alguns gbs dela. E armazenamos no disco centanas de GB que são acessados e forma lenta.
+
+O **memory manager** cuida dessa hierarquia. Em muitos sistemas (mas não no MINIX), ele faz parte do kenrel.
+
+## Basic memory management
+
+Podemos dividir os sistemas de MM em 2 tipos:
+
+- sistemas que movem processos entre a memoria principal e o disco durante a execução, **swapping and paging**
+- sistemas que não fazem o que esta acima
+
+### Monoprogramming without Swapping or Paging
+
+O jeito mais simples de MM é executar apenas um programa/processo por vez, fazendo com que a memoria seja compartilhada entre esse programa e o SO. Temos 3 esquemas principais de fazer isso:
+
+- Colocar o SO no inicio da RAM e o programa no que sobrar. Usado por mainframes antigamente
+- Colocar o SO na memoria ROM e o programa na RAM. Usado em alguns sistemas embarcados
+- Colocar o SO e o programa na RAM e os device drivers na ROM. Usado no inicio da computação, a parte que ficava na ROM era chamada de **BIOS**.
+
+### Multiprogramming with Fixed Partitions
+
+O jeito mais facil de fazer MM quando temos multi processos é simplesmente dividir a memoria em *n* partições, com tamanhos possivelmente diferetes. Uma solução pra a criação dessas partições seria criar varias delas, com tamanhos difentes, assim que o sistema é iniciado, chamado **MFT**, Multiprogramming with a Fixed number.
+
+Nesse modelo apresentado acima, as partições possuem tamanho fixo. Um jeito de alocar uma partição para um processo seria colocar ele em uma fila na menor partição que pode armazena-lo. Outra alternativa seria termos uma fila unica, onde um proceso pode ser colocado na primeira partição livre que tiver espaço para ele. Em ambos os casos temos desperdicio de espaço.
+
+### Relocation and protection
+
+Com a solução acima, sabemos que diferentes processos vão estar em diferentes regiões da memoria. Como fazer com que programas/bibliotecas linkados a esse processo saibam o endereço e consigam acessar os dados de maneira correta? Ademais, como garantir que um processo não acesse o espaço de memoria de outro?
+
+A solução para isso foi fazer com que a maquina tivesse mais dois registradores, **base** e **limit**. Quando um processo é escalonado, o registrador base recebe o inicio do endereço de memoria desse processo, e o limit recebe o final. Assim, bibliotecas conseguem se limitar a aquele espaço de memoria usando algebra simples, e a segurança é garantida vendo se o acesso foi entre esses dois limites.
+
+## Swapping
+
+Nos sistemas modernos, nem todos os processos cabem na memoria principal no mesmo momento, logo, alguns processos precisam ser guardados em disco e trazidos para a memoria quando necessarios.
+
+A estrategia mais simples para lidar com isso é o **swapping**, que implica transferirmos o processo inteiro entre a memoria principal e o disco. Para esse metodo, um sistema de **partição dinamica**, onde as partições não tem um tamanho fixo desde o inicio do sistema, seus tamanhos vão sendo alterados durante a execução.
+
+O fato acima, sem duvida, aumenta a eficiencia da memoria, causando menos desperdicio. Outra coisa que podemos fazer é a **memory compaction**, fazendo com que todas a partições fiquem *juntinhas*, mas isso não é geralemnte feito pois usa muita CPU.
+
+Quando temos processos que podem aumentar o tamanho de memoria alocada durante sua execução, é uma boa pratica, ao trazer o processo do disco para a memoria, deixar um espaço extra entre esse processo e outro, para que, se tal processo deseje aumentar de tamanho, ele não tenha que esperar.
+
+### Memory management with bitmaps
+
+Uma necessidade é saber, de maneira rapida, quais partes da memoria estão livres. Em um **bitmap** cada bit ira representar uma porção de memoria, 0 esta vazio e 1 esta ocupada. O problema é decidir o tamanho da porção representada. Se 1 bit representar uma porção muito pequena, nosso bitmap vai ficar muito grande. Se 1 bit representar uma porção muito grande, podemos perder precisão.
+
+Quando se deseja trazer um processo que tem tamanho de *k-porções*, o MM vai procurar no bitmap por uma sequencia de *k* zeros, posições vazias da memoria que podem armazenar o processo.
+
+### Memory management with linked lists
+
+Uma outra maneira de resolver o problema das partes da memoria que estão livres é usar uma lista ligada. Tal lista tem os nos **process (P)** e **hole (H)**. Cada nó especifica o inicio de uma região na memoria, o seu tamanho e o proximo item da lista. Um exemplo de tal lista seria:
+
+`P[0, 5, ->] -> H[5, 1, ->] -> P[6, 10, -]`
+
+No exemplo acima, a fila esta ordenada por order de inicio de endereço. Essa ordenação, alem de ser facil de ser mantida, facilita o processo de alocar ou desalocar memoria. Com isso, podemos ter os seguintes algoritmos para alocação de memoria:
+
+- **first fit**: percorre a lista ligada desde o começo ate achar uma posição vazia que tem capacidade para receber o novo processo. O hole é quebrado em 2 novos nos, um processo e um novo buraco (menor). É rapido pois acaba assim que acha
+- **next fit**: mesma coisa que o de cima, mas começa a busca a partir do ultimo ponto de parada. É pior.
+- **best fit**: percorre a lista inteira e tenta achar o menor buraco que pode armazenar o processo. Além de demorar mais, não apresenta ganho no proveito de memoria, pois deixa pedaços muito pequenos vazios, que não poderão ser usados por outros processos.
+- **worst fit**: acha o maior buraco, para tentar solucionar o problema do de cima. Mas tambem não é bom.
+- **quick**: cria um vetor com varios tamanhos de buracos, uma posição desse vetor vai conter a cabeça de uma lista ligada que vai armazenar todos os buracos com aquele dado tamanho. É muito rapido para achar um novo buraco, mas extremamente ruim para desalocar.
+
+## Virtual memory
+
+Em um certo momento começaram a aparecer programas tão grandes que eles não cabiam na memoria. A solução adotada em dividir o programa em pedaços, chamados **overlays**. Dessa maneira, a primeira overlay começava a ser executada, depois outra, ate que o programa terminasse. As overlays eram mantidas no disco e trazidas de maneira dinamica para a memoria, pelo SO. Quem dividia o programa em pedaços era o proprio programador.
+
+O trabalho do programador de dividir o programa chegou ao fim ao a **memoria virtual**. Com ela, o disco pode ser visto como a extensão da memoria RAM, e o programa e divido entre esses dois recursos, com a parte mais usada ficando na memoria principal.
+
+### Paging
+
+Tecnica usada por sistemas de memoria virtual. Em qualquer computador existe conjunto de endereços de memoria que programas podem gerar. Por exemplo, a operação `MOV REG,1000` move o conteudo do endereço de memoria 1000 para REG.
+
+Esses endereços gerados pelos programas são os **virtual addresses** e formam o **virtual address space**. Em computadores sem memoria virtual, esse endereço é traduzido diretamente para a memoria RAM. Quando usamos a memoria virtual, esse endereço vai para o **MMU (memory management unity)**, que mapeia esse endereço para as duas opções de memoria fisica (RAM e disco).
+
+O espaço da memoria virtual é dividido em **paginas**, e suas representações na memoria fisica são chamadas **page frames**, ambas tem o mesmo tamanho. Quando tranferencias são realizadas entre a RAM e o disco sempre se tranfere uma pagina inteira.
+
+O numero de _paginas_ é sempre maior que o numero de _page frames_, então, existe um **present/absent bit**, presente no hardware, que diz se aquela esta presente ou não na memoria fisica.
+
+Quando um programa tenta acessar uma pagina que o MMU não mapeou o MMU faz com que a CPU faça uma *trap* no SO, chamada de **page fault**. O SO então pega uma page frame que não foi muito usada, coloca ela de volta no disco e muda o mapeamento para que a pagina que ainda não mapeada se refencie para essa nova page frame livre. Dai então a trap e retirada e a operação reinciada.
+
+Para realizar esse mapeamento, o MMU usa a **page table**, assim, os primeiros indices de um endereço passado para o MMU representam um indice na tabela. Esse indice, ao ser acessado, possui o *p/a bit* e o endereço para o page frame. O restante dos bits do enreço de entrada é chamado de **offset** e é passado para complementar o endereço final.
+
+Um exemplo, podemos dividir o endereço de entrada em X+K (XXXXKKKKKKK). Acessamos o indice X da tabela e pegamos o valor Y. O endereço que sai do MMU é o Y+K (YYKKKKKKK).
+
+### Page tables
+
+O jeito mais simples de mapearmos memoria virtual para memoria fisica é fazer o que descrevemos acima. O endereço virtual é dividido em um **vitual page number (high order bits)** e um **offset (low order bits)**. Por exemplo, com endereços de 16-bits e uma pagina de 4KB (a pagina precisa ter o tamanho de 2^|offset|. Aqui é 4096 == 2^12), poderiamos usar os 4 primeiros bits do endereço como VPN para uma das 16 paginas e outros 12bits especificariam o offset (0 ate 4095) na pagina selecionada.
+
+Temos dois principais desafios: a tabela de paginas pode ser grande e o mapeamento precisa ser rapido. O jeito mais simples de montar a tabela é fazer uma tabela unica. Porem, a seguir, veremos dois metodos mais robustos.
+
+#### Multilevel page tables
+
+Para nos livrarmos do problema de precisarmos ter a _page table_ (PT) completa  na memoria, podemos criar mais um nivel. Assim, um _virtual adress_ de 32bits pode ser dividido em **10bit PT1 adress**, um **10bit PT2 adress** e um **12bit offseet**. Assim usamos o endereço de PT1 para acessar PT2, e PT2 para acessar a posição na memoria fisica. Note que todas as possiveis PT2 não precisam ficar na memoria principal.
+
+#### Estrutura de uma entrada na page table
+
+O principal campo é o **page frame number**, ate porque esse é todo o objetivo de termos PTs. Em seguida tempos o **present/absent bit** (1-entrada é valida e pode ser usada | 0-a pagina virtual não esta atualmente na memoria). Temos o **protection bit** (rwx). Temos um **modified/referenced bit**, que avisa se aquela pagina foi modificada, pois isso significa que sua versão no disco deve ser modificada. O ultimo bit avisa se o cache deve ou não ser habilitado.
+
+### TLB - Translation lookaside buffers
+
+Foi percebido que os processos costumam fazer uma grande quantidade de referencias para uma pequena quantidade de paginas. Sabendo disso, foi criado um novo buffer no hardware que serve como um _cache_ para a memoria virtual, onde acessos podem ser feitos de forma mais rapidas. É uma especie de mapeamento direto, onde a tabela possui pouquissimas entradas.
+
+## Page replacement algorithms
+
+Quando uma _page fault_ acontece o sistema operacional precisa escolher uma pagina pra ser retirada da memoria e assim conseguir espaço para a pagina que precisa ser acessada. Se a pagina escolhida para ser retirada foi modificada enquanto estava na memoria, sua versão no disco precisa ser atualizada. Caso contrario, basta sobrecreve-la.
+
+### Algoritmo otimo para page replacement
+
+O algoritmo otimo é facil de ser descrito e impossivel de ser implementado. O algoritmo funciona da seguinte maneira:
+
+Quando uma _page fault_ acontece, algum conjunto de paginas estão na memoria. Poderiamos entiquetar cada uma dessas paginas com o numero de execuções que irão acontecer em seguida que não usarão tal pagina. O algoritmo perfeito, removeria a pagina que vai demorar mais tempo ate ser usada, ou seja, a pagina com a maior etiqueta.
+
+### The Not Recently Used Page Replacement Algorithm
+
+A maioria dos computadores com memoria virtual possuem 2 bits associados a cada pagina. O bit `R` é ligado toda vez que uma pagina é referenciada (lida ou escrita) e `M` é ligado toda vez que a pagina é modificada. Se o hardware não possui esses bits, é possivel que eles sejam emulados pelo SO.
+
+O algoritmo que utiliza os bits R e M é descrito a seguir:
+
+Quando um processo é inicializado, todos os bits RM de suas paginas são setados como 0. Periodicamente o bit R e resetado para distiguirmos os processos que foram referenciados mais recentemente. Quando uma _page fault_ acontece, o SO inspeciona todas as peginas e as classifica em 4 classes, de acordo com os bits RM:
+
+- classe 0: não referenciado, não modificado
+- classe 1: não referenciado, modificado
+- classe 2: referenciado, não modificado
+- classe 3: referenciado, modificado
+
+O algoritmo então, escolhe uma pagina aleatoria, da classe mais baixa (mais proxima de 0) não vazia. O algoritmo não é top, mas é consideravelmente eficiente e de facil implementação.
+
+### The First-In, First-Out (FIFO) Page Replacement Algorithm
+
+O SO mantem uma lista de todas as paginas na memoria, onde a pegina na frente da lista é a mais velha e a que esta no fim da fila é a mais nova. Quando uma _page fault acontece_ a pagina mais velha é removida para dar espaço. Facil de implementar mas não muito bom.
+
+### The Second Chance Page Replacement Algorithm
+
+Uma alternativa para a algoritmo FIFO, que evita que paginas muito acessadas sejam retiradas da memoria é dada a seguir. Da mesma maneira acima, queremos remover o processo mais antigo, porem, checamos se o seu bit R (diz se o processo foi referenciado recentemente) esta ligado. Caso positivo, esse bit é desligado e a pagina é colocada no fim da fila, como se tivesse acabado de entrar, e então a busca continua. Caso negativo, basta retirarmos essa pagina velha que esta com o bit R desligado.
+
+Desligarmos o bit R quando colocamos uma pagina de volta na fila garante que o algoritmo vai acabar.
+
+### The Clock Page Replacement Algorithm
+
+Similar ao algoritmo acima, porem, a implementação utiliza uma lista circular e um ponteiro aponta a pagina mais velha.
+
+### The Least Recently Used (LRU) Page Replacement Algorithm
+
+É a melhor aproximação do algoritmo otimo. Esse algoritmo consiste na observação de que paginas que foram muito acessadas nas ultimas instruções provavelmente vão continuar sendo muito acessadas. E como consequencia, as paginas pouco acessadas vão continuar assim. A ideia se resume em: quando uma _page fault_ acontece, jogamos fora a pagina que não foi usada por mais tempo.
+
+Esse algoritmo é muito custoso, pois toda vez que uma pagina é referenciada, precisamos atualizar o seu tempo de ultimo acesso, e para fazermos isso precisamos percorrer a lista.
+
+Entretanto, podemos fazer implementações eficientes com auxilio do hardware.
+
+A primeira solução é equipar um contador C no hardware, que é incrementado toda vez que uma instrução é feita. Assim, quando uma pagina é referenciada, basta guardarmos nela o valor atual de C. Assim, basta descobrirmos a pagina com o menor valor de C e retirarmos ela.
+
+Outra maneira é a seguinte: se temos N page frames, vamos manter uma matriz NxN. Quando uma page frame K é referenciada, colocamos todos os bits da k-esima linha como 1 e todos os bits da k-esima coluna como 0. Em qualquer instante, a linha com o menor valor binario é a menos usada.
+
+### Simulando LRU em software
+
+Muitas maquinas não possuem os artefatos acima. Devido a isso, precisamos recorrer para alternativas em software.
+
+Uma das soluções é o algoritmo **NFU (not frequently used**). Cada pagina tem um contador, inicizalidao com 0. A cada _clock interrupt_ o SO passa por todas as paginas e incrementa R no contador. Com isso, retiramos da memoria a pagina com o menor contador.
+
+## Design issues for paging systems
+
+### The working set model
+
+Processos são iniciados com nenhuma de suas paginas na memoria. Conforme ele vai sendo executado, tudo o que ele precisa vai indo para a memoria e cada vez menos _page faults_ vão acontecendo. Isso é chamado de **demand paging**, pois as paginas são carregadas _on demand_.
+
+Muitos processos aprensentam **locality of reference**, ou seja, durante alguma fase de execução o processo vai referenciar apenas uma pequena porção de suas paginas.
+
+O conjunto de paginas que estão sendo utilizadas por um processo são chamadas de **working set**. Se todo o working set esta na memoria, poucas page fault irão acontecer. Se a memoria for muito pequena e não armazenar grande parte do working set, vão acontecer muitas page faults, quando isso acontece com muita frequencia, dizemos que o processo esta **thrashing**.
+
+Num sistema de multiprogramação, o principal problema surge quando trazemos um processo de volta para a memoria principal. Com esse ato, muitas _page fault_ irão acontecer. Com isso, muitos sistemas de paginamento trazem de volta algumas paginas associadas ao processo, quando este esta sendo carregado na memoria. Isso evita _demand paging_ e é chamado de **prepagin/working set model**.
+
+### Local versus global allocation policies
+
+Acima, quando discutimos algoritmos de alocação de memoria, pulamos um detalhe: devemos retirar uma pagina do mesmo processo ou de qualquer processo no sistema?
+
+Dizemos que o algoritmo de _page replacement_ é **local** se ele so remove paginas do mesmo processo. Isso corresponde a alocar um tamanho fixo de memoria para cada processo.
+
+Já um algoritmo **global** pode retirar uma pagina de qualquer outro processo. Isso faz com que a quantidade de memoria usada por cada processo passe a ser dinamica.
+
+Em geral, algoritmos globais funcionam melhor.
+
+### Virtual memory interface
+
+Podemos fazer com que o programador tenha acesso ao MMU. Dessa meneira pode se fazer com que processos compartilhem regiões de memoria. Com isso, alem das aplicações basicas, pode se implementar um sistema rapido para passagem de mensagens.
+
+## Segmentation
+
+Ideia para que um processo organize seu espaço de memoria. Assim, ele pode ter segmentos, que é constituido por uma sequencia continua de endereços, que podem variar de tamanho de maneira independente. Essa estruta é definida e esta visivel para o programador. É como se estivessemos criando _pseudo virtual adresses_ dentro da execução do programa.
+
+Organizar a memoria em segmentos tambem facilita com que haja compartilhamento de memoria entre processos.
+
+Um segmento tambem pode apresentar uma proteção especifica, ou seja, podemos dizer que um segmento so pode ser executado e que não pode ser modificado. Isso não faz sentido de ser feito na memoria virtual, uma vez que o programador não tem ciencia de como as paginas estão sendo criadas e mantidas.
+
+Comparação entre paging e segmentação
+
+| Consideração | Paging | Segmentation |
+| --- | --- | --- |
+| Need the programmer be aware that this technique is being used? | NO | YES |
+| How many linear address spaces are there? | 1 | MANY  |
+| Can the total address space exceed the size of physical memory? | YES | YES |
+| Can procedures and data be distinguished and separately protected?  | NO | YES |
+| Can tables whose size fluctuates be accommodated easily? | NO | YES |
+| Is sharing of procedures between users facilitated? | NO | YES |
+| Why was this technique invented? | To get a large linear address space without having to buy more physical memory | To allow programs and data to be broken up into logically independent address spaces and to aid sharing and protection |
+
+### Implementation of pure segmentation
+
+A implementação de segmentos difere da implementação de paginação na seguinte maneira: paginas tem tamanho fixo, segmentos não. Com a aumento/diminuição dos segmentos, vamos criando buracos na memoria, esse fenomeno é chamado de **checkerboarding** ou **external fragmentation**. A solução para isso é realizar compactação.
+
+### Segmentation with Paging: The Intel Pentium
+
+O pentiu pode ser setado pelo SO para usar so segmentação, so paginação ou ambos. O coração disso esta em duas tabelas, **LDT (local descriptor table)** e **GDT (global descriptor table)**. Cada programa tem sua propria LDT, mas so existe uma GDT compartilhada por todos os programas. A LDT descreve os segmentos locais de cada programa e a GDT descreve segmentos do sistema em si.
+
+# File systems
+
+Quando um processo so armazena informação na memoria temos 3 problemas:
+
+- O espaço na memoria é limitado, não se pode guardar arquivos muito grandes
+- Quando o processo acaba, toda a informação é perdida
+- As vezes é necessario que multiplos processos tenham acesso a informação
+
+A solução para esses problemas é transformar essas informações em **arquivos** e guarda-las nos discos ou em algum dispositivo externo.
+
+Chamos de **file system (FS)** a parte do sistema operacional que gerencia tais arquivos.
+
+## Arquivos
+
+### File naming
+
+Arquivos são um mecanismo de abstração, uma maneira de ler/escrever informações no disco. Na maioria dos sistemas, os nomes dos arquivos são strings com tamanho de 1 a 80. Alem disso, no UNIX, existe diferenciação entre letras maiusculas e minusculas.
+
+Muitos sistemas suporta nomes de arquivos que são dividos em 2 partes por um `.`. A parte depois do `.` é chamada de **extensão do arquivo**. Em sistemas como o UNIX, extensão de arquivos são meramente convernsões e não são _forçadas_ pelo SO. Alem disso, elas podem servir para dizer qual programa padrão deve abrir aquele tipo de arquivo.
+
+### File structure
+
+Arquivos podem ser estruturados de 3 principais maneiras:
+
+- Representar ele como uma simples sequencia de bytes, que depende dos programas para atribuir algum significado. UNIX e W98 usam isso. Isso permite muita flexibilidade, pois um arquivo pode conter qualquer coisa e pode ter qualquer nome.
+- Arquivos podem ser registros de tamanho fixo, cada um com sua estrutura interna. Foi usado antigamente, na epoca dos cartões.
+- Podemos organizar o registro de arquivos como uma arvore, ordenando ela para acesso mais rapido.
+
+### Tipos de arquivo
+
+**Regular files** são as coisas dos usuarios. **Diretorios** são arquivos do sistema que mantem a estruta do FS. **Character special files** são usados para dispositivos IO e **block special files** são usados para _modelar_ discos.
+
+Arquivos regulares são, na grande maioria das vezes, arquivos ASCII ou binarios. Os ASCII são arquivos compostos por linhas de texto, sua grande vantagem é que podem ser lidos e impressos, alem de editados em qualquer editor de texto.
+
+Já os arquivos binarios são todos os arquivos que não são ASCII. Normalmente eles apresentam algum tipo de etrutura interna que so vai ser entedida pelo programa que o interpreta.
+
+### File acesss
+
+Os primeiros SOs so tinham um tipo de acesso a arquivos, **sequential acess**. Assim, quando um processo tivesse que ler algum byte/record do arquivo, ele tinha que fazer isso de maneira sequencial, percorrendo todos antes do que se quer.
+
+Quando começou a se usar discos para se armazenar informação, foi possivel que partes de um arquivo pudessem ser lidas fora de ordem, ou ate mesmo acessadas por uma chave e não por sua posição. Chamamos isso de **random acess files**.
+
+### File Attributes
+
+Tambem chamados de **metadata**, são informações extras armazenadas nos arquivos, como data, tamanho, proteção, etc.
+
+### File operations
+
+A seguir, temos as operações mais comuns que podem ser feitas em arquivos.
+
+- `Create`: cria um arquivo vazio
+- `Delete`: apaga o arquivo e libera espaço de disco
+- `Open`: antes de usar um arquivo, um processo precisa abri-lo. Isso significa carregar os atributos e uma lista dos endereços de memoria do arquivo, fazendo com que o acesso a ele seja rapido.
+- `Close`: retira as informações que foram trazidas acima. Alguns sistemas limitam o numero de arquivos que podem estar abertos em algum instante.
+- `Read`: le algo do arquivo. Deve se passar quanta informação vai ser lida e um buffer para se colocar tal informação
+- `Write`: se coloca algo no arquivo. Se for no final, o arquivo é aumentado, se for no meio, coisas vão ser sobrescritas.
+- `Append`: forma restrita do write, colocando coisas no fim do arquivo.
+- `Seek`: para random acess files. Dizemos para onde queremos apontar no arquivo, depois disso podemos fazer as outras operações normalmente, a partir da posição especificada.
+
+## Diretorios
+
+### Simple directories
+
+Um diretorio contem varias entradas, uma por arquivo. Uma possibilidade é fazer com que essas entradas possuam o nome do arquivo, os seus atributos e os endereços onde seus dados estão armazenados. Outra maneira é fazer com que cad aentrada tenha um ponteiro para uma estrutura que ira descrever o arquivo.
+
+Qaundo um arquivo é aberto, o So procura no diretorio ate achar o nome do arquivo que deseja abrir, então ele carrega na memoria todos os atributos e endereços de memoria desse arquivo, a partir dai, qualquer referencia feita no arquivo busca coisas na memoria.
+
+### Hierarchical Directory Systems
+
+Maneira de organizar melhor os arquivos, formando uma especie de arvore. Onde temos o diretorio raiz junto com uma infinidade de subdiretorios e afins.
+
+### Path Names
+
+Para dar nome aos arquivos que estão nessa hierarquia de diretorios, temos dois principais metodos. Podemos atribuir um **absolute path name** ao arquivo, que consiste no caminho percorrido desde o diretorio raiz ate o arquivo, por exemplo, `/usr/srs/server/pm/proto.h`.
+
+Outro tipo de nome é o **relative path name**, que é usado em conjunto com o conceito de **working directory**. Com isso, fazemos com que a pasta raiz _se torne_ (so de mintirinha) o diretorio atual.
+
+Cada processo esta em um **working directory**, caso seja necessario, o processo tambem pode mudar de working direcotry.
+
+Muitos sistemas possuem duas entradas (arquivs) em todo diretorio, `.` (diretorio atual) e `..` (diretorio pai).
+
+### Directory Operations
+
+Principais funções que lidam com diretorios:
+
+- `Create`: Cria um diretorio vazio, apenas com os arquivos `.` e `..`.
+- `Delete`: Deleta um diretorio, apenas diretorios vazios podem ser deletados.
+- `Opendir`: Abre um diretorio para que ele possa ser lido, ou seja, coloca suas entradas na memoria.
+- `Closedir`: Fecha o diretorio, tirando suas entradas da memoria.
+- `Readdir`: Retorna a proxima entrada (arquivo) em um diretorio aberto.
+- `Rename`: Muda o nome do diretorio.
+- `Link`: É uma tecnica que permite que o arquivo seja mostrado em mais de um diretorio, recebe um arquivo e um caminho, linka o arquivo para ele tambem aparecer nesse caminho, esse link incrementa o contador no i-node do arquivo.
+- `Unlink`: Retira o link do arquivo, se esse era o unico link que continha o arquivo, tal arquivo é removido do FS (No UNIX, a operação de excluir um arquivo é somente um unlink).
+
+## File system implementation
+
+### File system layout
+
+So recapitulando. Discos podem ser dividos em partições, com FS independentes em cada uma. O setor 0 do disco é chamado de **MBR (master boot record)** e é usado para dar _boot_ no sistema. O fim do MBR contem a tabela de partições. A BIOS le e executa o programa em MBR, que vai achar e executar o **boot block**. O BB inicializa o SO contido naquela partição. Toda partição começa com um BB, mesmo que ela não contenha um SO.
+
+Em um sistema não se pode ter mais de 4 **partições primarias**, que é o tamanho da array que descreve as partições. Alguns SO permitem que alguma entrada dessa lista seja uma **extended partition**, que aponta para uma lista ligada de **logic paritions**. Isso faz possivel termos qualquer numero de partições adicionais. A BIOS não pode iniciar o SO de uma partição logica.
+
+Uma alternativa para extender partições, que usada pelo MINIX, é fazer com que uma partição aceite uma **subpartition table**. A vantagem disso é que podemos fazer toda e qualquer coisa que fariamos em uma partição normal dentro dessa subpartição.
+
+Depois do boot block, o layout de uma partição varia de FS para FS. Em sistemas UNIX, a partição tem a cara abaixo:
+
+| Boot block | Super block | Free space mgmt | I-nodes | Root dir | Files and directories |
+| --- | --- | --- | --- | --- | --- |
+
+O **superblock** é responsavel por conter todos os parametros principais acerca do FS e é colocado na memoria assim que o sistema é iniciado. Depois vem as informações sobre os blocos livres no disco. Depois temos os _I-nodes_, uma array que fala sobre cada arquivo. Depois temos a raiz do sistema de arquivos e finalmente o restante dos arquivos e diretorios.
+
+### Implementando arquivos
+
+O problema mais importante no armazenamento de arquivos é manter a informação de quais blocos de disco são responsaveis por cada arquivo.
+
+#### Alocação contigua
+
+A maneira mais simples é armazenar cada arquivos numa sequencia contigua de blocos. Temos duas vantagens principais: é simples de implementar, pois, para saber onde um arquivo esta basta saber onde esta o bloco inicial e o numero total de blocos que o arquivo oculpa; a performance de leitura é muito alta, pois todo o arquivo pode ser lido do disco em uma unica operação.
+
+Porém, o maior problema com isso é a fragmentação. Coforme os arquivos vão sendo criados e apagados, vão se criando buracos no disco, e para se ter novamente um bom espaço util, é necessario desfragmentar o disco, o que é muito custoso.
+
+Esse tipo de alocação é boa para dispositivos em que so se escreve uma vez e que sabemos o tamanhos dos arquivos que serão escritos de antemão. Como DVDs.
+
+#### Linked list allocation
+
+Outra maneira é manter, para cada arquivo, uma lista ligada que contem os blocos que compoem aquele arquivo. Com esse metodo, nenhum espaço de disco é perdido com fragmentação, a não ser a fragmentação interna no ultimo bloco do arquivo. Ademais, basta que o diretorio so guarde o primeira parte da lista.
+
+Todavia, acessar os blocos assim, de maneira aleatoria e sem nenhuma ordem pode ser muito lento e custoso. Como gastamos um pedaço de cada bloco com um ponteiro para o proximo bloco da lista, perdermos um pouco de espaço ai tbm.
+
+#### Linked list allocation using a table in memory
+
+Podemos melhorar a solução acima colocando os ponteiros dos blocos em uma tabela, onde cada linha é um bloco de memoria. Assim, um arquivo que usasse os blocos 4, 9 e 12, apontaria para a linha 4, a informação na linha 4 seria a linha 9, a informação na linha 9 seria uma marcação de fim de arquivo (-1). Essa tabela é chamada de **FAT (file allocation table)**.
+
+Com isso, evitamos que um bloco tenha seu tamanho reduzido pois precisa armazenar o ponteiro. Porém, acabamos de ter que colocar toda essa tabela na memoria principal, para um disco de 20GB e blocos de 1KB, essa tabela iria ocupar 60~80MB. Usado pelo MS-DOS e W98.
+
+#### I-nodes
+
+Ideia de associar essa estrutura para cada arquivo. Cada nó é uma tabela que contem os atributos e endereços de memoria do arquivo. A grande vantagem é que o i-node só precisa estar na memoria principal quando um arquivo é aberto. Se cada inode ocupa n bytes e so podemos ter k arquivos abertos no sistema simultaneamente, então o espaço maximo ocupado sera nk.
+
+Porem, o problema se da quando definimos inodes de tamanho fixo, assim, temos um limitante do numero de blocos que um arquivo pode ter. Para solucionar esse problema, podemos fazer com que as ultimas entradas da tabela linkem para outras tabelas, os **indirect blocks**, que são continuações da tabela atual.
+
+### Implementando diretorios
+
+Quando um arquivo é aberto, o SO pega o _path name_ fornecido pelo usuario para achar o diretorio em que o arquivo esta. Achar um diretorio, significa, primeiro achar o diretorio raiz. No UNIX classico o _superblock_ nos diz onde ons _i-nodes_ podem ser encontrados, o primeiro _i-node_ aponta para o diretorio raiz, criado junto com o FS. No windows, informações no _boot sector_ localizam o **MFT (master file table)**, que é usado para se encontrar outras componentes do sistema.
+
+Depois que o diretorio raiz é encontrador, basta seguir o caminho fornecido ate se chegar na pasta desejada. Agora, basta percorremos a lista de entradas no diretorio para acharmos o ponteiro para o _i-node_ do arquivo desejado.
+
+#### Shared files
+
+Quando temos arquivos presentes em mais de um diretorio. No UNIX, como usamos _i-node_, basta que as pastas que desejam mostrar aquele arquivo apontem para o seu _i-node_. Tal _i-node_ vai ter um contador do numero de pastas que apontam pra ele, quando esse contador chega a 0 o _i-node_ é deletado.
+
+O tipo de ligação acima é chamado de **hard link**. A maior limitação é que os _i-nodes_ são estruturas de uma unica partição, ou seja, não podem existir links entre essas duas partições. Outro problema é que um arquivo so pode ter 1 dono, que vai mudar suas permissões, se esse dono exclui esse arquivo, outro usuario que tem uma copia do mesmo não pode mudar suas permissões.
+
+Um outro jeito de compartilhar arquivos é criando **symbolic links** (**atalho** no windows). Nessa maneira, criamos um arquivo em que o conteudo é um _path_ para outro arquivo. O problema é que se o arquivo principal for renomeado ou excluido, todos os _symbolic links_ ficam orfãos.
+
+#### Diretorios no UNIX
+
+A estrutura de um diretorio no UNIX é bem simples. Um diretorio é composto por uma lista de entradas (arquivos), a estrutura de uma entrada contem uma string ASCII (14 bytes) com o nome do arquivo e o numero do _i-node_ (2 bytes). Como diretorios tambem são arquivos, eles entram nessa estrutura.
+
+#### Diretorios em NTFS
+
+Desenvolvido pela microsoft, o **new technology file system** é o FS padrão. NTFS permite nomes de arquivos grandes, de ate 255 caracteres, alem de grandes _path names_, ate 32767 caracteres. Os caracteres usados são os unicode, 16bit cada, que pode conter caracteres de todas as linguas.
+
+No NTFS um arquivo é uma coleção de atributos, e cada atributo é uma sequencia de bytes. A estrutura basica é a **MFT (master file table)**, que pode conter 16 atributos de ate 1KB. Se esse espaço não for suficiente para o arquivo, podemos ter um atributo que aponta para outra MFT, chamamos isso de **nonresident attribute**.
+
+### Disk space management
+
+#### Block size
+
+Como ja sabemos que os arquivos serão armazenados em blocos, resta saber qual sera o tamanho desses blocos. No UNIX, o tamanho padrão do bloco é 1KB.
+
+#### Keeping track of free blocks
+
+Temos dois principais metodos _keeparmos track_ dos free blocks:
+
+Podemos usar uma lista ligada, com cada bloco, apontando para o maximo numero de blocos livres que ele conseguir. A parte boa é que so precisamos guardar o no principal na memoria.
+
+Outra maneira é usar um bitmap, onde blocos ocupados são marcados com um bit ligado. Essa approach utiliza menos espaço, porem precisamos manter todo o bitmap na memoria.
+
+### File System Reliability
+
+Aqui, olharemos maneiras de proteger o FS contra defeitos e falhas.
+
+Em discos modernos, com milhões de blocos, é impossivel assegura que não teremos _bad blocks_. Existe soluções proprias do device para lidar com eles. Além disso, podemos tomar a solução via software que é criar um arquivo que ocupa todos os _bad blocks_ entrados, assim, nenhum outro arquivo vai utiliza-los pois eles nunca estarão na _free list_.
+
+#### Backups
+
+Um dos artefatos mais conhecidos de backup é a **trash bin**, ou seja, quando um arquivo é deletado ele não é diretamente eliminido do sistema e sim tranferido para esse diretorio.
+
+Claramente, ao se fazer um backup, não é necessario que guardemos todas as pastas no FS. Não queremos os binarios dos programas, pois basta baixa-los novamente; não queremos os arquivos temporarios; não queremos os arquivos relacionados a IO, aqueles contidos em `/dev/`.
+
+Ademais, caso backups sejam feitos constantemente, não queremos realizar novamente o backup de arquivos que não foram modificados, essa é a ideia de **incremental dumps**. Outra decisão a ser tomada é se devemos ou não aplicar um algoritmo de compressão sob os dados, dado que caso uma sessão seja corrompida poderemos perder todo o backup.
+
+A primeira estrategia que podemos tomar é um **physical/logical dump**, ou seja, copiar todos os blocos do disco, desde o bloco 0 ate o fim, para o disco de backup. Implementar essa estrategia é facil. Sabemos que não adianta de nada _realizar o backup_ de blocos vazios. Além disso, é necessario tomar cuidado com os _bad blocks_, caso eles estejam sendo tomados conta pelo device, não tem muito o que ser feito, caso quem esteja cuidando deles seja o SO, atravez de _bad block files_, é necessario que esses arquivos não sejam copiados. A parte boa dessa estrategia é sua simplicidade (codar é tranks) e sua rapidez (dependemos da rapidez do disco somente). Os principais pontos negativos são a inabilidade de pularmos diretorios, de fazermos _incremental jumps_ ou de restaurarmos somente alguns arquivos.
+
+A segunda estrategia é realizar **logical dumps** que começa em um ou mais diretorios especificados e, recursavemente, faz o backup de arquivos modificados a partir de uma certa data. Logo, como o backup dos arquivos é feito em serie, fica mais facil fazer a restauração de um arquivo/diretorio especifico. A primeira coisa que a ser feita é uma analise da _directory tree_, pois é necessario que todas as pastas e atributos que façam parte do _path_ de algum arquivo tambem faça parte do backup, para se manter a consistencia.
+
+#### File System Consistency
+
+Caso o FS _crashe_ ou apresente falhas durante a escrita de um bloco, teremos um sistema incosistente, com possiveis falhas. Para lidar com isso, no UNIX, temos a ferramenta `fsck` para checar se o FS (partição) esta consistente.
+
+Podemos checar a consistencia de blocos. Para isso, a ferramenta cria duas tabelas que tem um contador para cada bloco. Os contadores da primeira tabela dizem quantas vezes aquele bloco esta presente em um arquivo e os contadores da segunda tabela dizem quantas vezes aquele bloco aparece em uma free list (ou bitmap). O progrma então passa por todos os _i-nodes_ e incrementa os respectivos contadores na primeira tabela. Depois ele passa pela free list e incrementa todos os contadores da segunda tabela. Dai, temos 4 casos:
+
+- O FS esta consistente, cada bloco tem valor 1 na primeira tabela OU na segunda;
+- Podemos ter uma situação de **missing block**, quando o contador de um bloco fica zerado em ambas tabelas. Isso pode ter ocorrido porque o FS _crashou_ em algum momento e para resolver basta colocar este bloco na free list;
+- Podemos tem um bloco com valor >1 na segunda tabela, ou seja, ele aparece mais de uma vez na free list. Para resolver, basta reconstruir a free list;
+- O pior caso é quando o bloco tem valor >1 na primeira tabela, ou seja, ele é usado por mais de um arquivo. A solução, para manter a consistencia do FS, e copiar este bloco para outro(s) e refazer a referencia em algum do(s) arquivos. Isso garante que o FS esta consistente, mas provavelmente os arquivos estão corrompidos e uma mensagem deve ser apresentada ao usuario.
+
+Alem disso, a ferramenta pode checar a consistencia dos diretorios/arquivos. Para isso, uma tabela é criada, com um contador para cada arquivo (_i-node_). A ferramenta começa no diretorio raiz, e desce recursivamente ate alcançar todos os diretorios. Para todo arquivo (contando os _hard links_) em todo diretorio, incrementamos seu contador. Quando o processo termina, comparamos os numeros armazenados na tabela com o numero do contador interno de cada _i-node_. Se esses numeros batem, o sistema esta consiste, caso contrario, temos 2 casos:
+
+- O valor do contador interno do _i-node_ é maior que o numero na tabela. Isso quer dizer que mesmo que o arquivo seja removido de todos os diretorios possiveis, ele nunca vai ser removido do sistema (seu contador nunca vai chegar a 0). Para consertar, basta setar o valor do contador para o valor da tabela.
+- Caso o contador interno tenha um valor menor, podemos fazer com que o arquivo seja removido do sistema mesmo quando ainda esta em outros diretorios. Para conserta, basta, novamente, atualizar o valor interno com o da tabela.
+
+### File system performance
+
+Sabemos que acessar as coisas em disco é muito mais custoso e demorado do que acessar as coisas na memoria. Aqui, vamos ver algumas tecnicas para minimizar este problema.
+
+#### Caching
+
+Tecnica mais usada para reduzir acesso ao disco é chamada **block/buffer cache**, que é uma colação de blocos que estão logicamente no disco mas são mantidas na memoria para o acesso rapido.
+
+O algoritmo mais comum para gerenciar o cache faz o seguinte: checa todas as _read requests_; se o bloco pedido esta no cache, basta usa-lo; caso contrario ele é trazido para o cache e então copiado para o que foi solicitado.  Além disso, como o cache pode ter milhares de blocos, precisamos de uma maneira rapida para determinar se um bloco esta la ou não, isso é feito com o auxilio de uma hash table.
+
+Um problema é que não queremos que um bloco modificado fique muito tempo no cache, pois se algo ocorrer, aquelas mudanças não serão armazenadas em disco, e, consequentemente, serão perdidas. No UNIX, a solução encotrada utiliza a system call `sync`, que força com que os blocos modificados em cache sejam atualizados no disco. Com isso, temos um programa chamado `update` que é executado em background e faz uma chamada de `sync` a cada 30 segundos.
+
+Versões antigas do windows utilizavam uma solução chamada **write-through caches**, que realiza a atualização no disco toda vez que um bloco é modificado. Com isso, o uso de disco era mais alto do que se não tivessemos cache.
+
+#### Block read ahead
+
+Outra tecnica é fazer com que blocos estejam no cache antes mesmo de serem referenciado (mãe dinah feelings). Isso é feito quando temos arquivos contidos em blocos sequencias. Assim, se eu estou lendo o bloco N do arquivo, eu muito provavelmente vou ler o bloco N+1, logo, eu ja vou trazer ele enquanto estiver usando o bloco N.
+
+## Segurança
+
+Vamos ver como proteger os daditos.
+
+### The Security Environment
+
+As pessoas, frequentemente, utilizam os termos _segurança_ e _proteção_ como sinonimos. Aqui, definiremos _segurança_ como o problema geral, e _mecanismos de proteção_ como artefatos especificos do SO para resguardar a informação no sistema. A seguir, olharemos 3 facetas sobre segurança
+
+#### Ameaças
+
+Do ponto de vista de segurança, um sistema tem 3 objetivos principais, com 3 ameaças para cada um.
+
+O primeiro é **data confidentiality**, ou seja, coisas secretas devem permancer secretas. O dono da informação especifica quem pode ve-la, e o sistema tem que garantir que as especificações sejam cumpridas.
+
+O segundo objetivo é o de **data integrity**, ou seja, usuarios não autorizados não devem poder realizar alterações em arquivos sem que os donos dos mesmo autorizem.
+
+O terceiro objetivo é garantir **system availability**, ou seja, ninguem pode causar um disturbio no sistema e deixa-lo inutilizavel.
+
+#### Intruders
+
+Temos dois tipos de intruzos, os que so querem poder ler algo que eles não podem e os que querem mudar algo que eles não podem.
+
+#### Malicious programs
+
+Famosos **malwares**. O tipo mais comum é um **virus**, um programa que pode se multiplicar e se transmitir para outros computadores. Algo que um virus pode fazer é tornar o computador inutilizavel enquanto ele estiver la, isso é chamado de ataque **DOS (denial of service)**, que geralmente consome todo o poder de processamento da CPU, alem de encher o disco com lixo. Quando um virus de DOS se espalha por varios computadores, temos um ataque **DDOS (distributed ...)**.
+
+Outro tipo de programa malicioso é o **key logger**, que guarda tudo o que foi digitado no teclado. Muito usado para roubar senhas.
+
+Um virus normalmente vem dentro de algum outro programa. Caso o programa malicioso venha sozinho, chamamos ele de **worm** (famoso `virus.exe`).
+
+Outra categoria são os **trojan horses**. Esses, são deliberadamente baixados pelo usuario, na forma de uma aplicação que faz alguma função valida. Porém, ao ser instalada/executada, tal aplicação vai, tambem, executar/trazer softwares maliciosos.
+
+#### Accidental data loss
+
+Informação tambem pode ser perdida sem querer. Mas isso é facilmente tratavel/evitavel se backups forem feitos. Dentre as principais causas, temos:
+
+- atos de Deus: fogo, chuva, guerras
+- erros de hardware ou software
+- erros humano: pessoas sendo zé
+
+### Generic Security attacks
+
+O melhor jeito de achar falhas em um sistema é contratar um **penetration team**, que vai varrer todas as possiveis falhas dentro do sistema. Abaixo, temos as areas onde é mais comum de se encontrar erros
+
+1. Fazer o pedido de _memory pages_, espaço de disco e ler o que tem neles. Muitos sistemas não apagam as coisas ao desalocar recursos, assim, infromação pode estar contida e ser acessada por outros usuarios.
+2. Tentar realizar system calls que não são permitidas, ou ate mesmo usar parametros que não são validos.
+3. Dar inicio no processo de login é fechar a aplicação no meio do caminho. Em alguns sistemas o programa que faz a autenticação vai ser _killado_ e o login considerado bem sucessido.
+4. Fazer um programa que digita `login:  password:` o terminal assim que o sistema é iniciado, desse jeito da pra roubar a senha.
+
+## PROTECTION MECHANISMS
+
+Aqui, vamos olhar as implementações e tecnicas que o sistema utilizar para aplicar as politicas de segurança.
+
+Em alguns sistemas, a proteção é aplicada por um programa chamado **reference monitor**. Toda vez que um acesso a algum recurso potencialmente protegido é requisitado, esse programa checa se esse acesso deve ser autorizado ou não. Abaixo, vamos descrever o ambiente em que este programa opera.
+
+### Protection domains
+
+Em um sistema, temos varios **objetos** (CPUS, discos, impressoras, processos, arquivos, semaforos, etc). É obvio que precisamos de alguma maneira para limitar as ações que podem ser feitas ou recebidas por um objeto.
+
+Um **dominio** é um conjunto de pares `<objetos, permissões>`, que especifica quais operações podem ser realizadas naquele objeto. Normalmente um dominio se aplica a 1 usuario, dizendo o que ele pode ou não fazer. A todo momento, cada processo é executado dentro de um _protection domain_, ou seja, dentro de um conjunto de objetos que ele pode acessar assim como um conjunto de opereações que ele pode realizar em cada um. Um processo pode mudar de dominio durante sua execução.
+
+No UNIX, o dominio de um processo é definido pelo **UID** (used ID) e **GID** (group ID). Com isso, basta sabermos a combinação <UID, GID> para que possamos listar todos os objetos que tal processo pode acessar, assim como as permissões RWX que cada um possui.
+
+Ademais, um processo em UNIX tem duas partes: a parte de usuario e a parte de kernel. Quando um processo realiza uma syscall ele muda para a sua metade de kernel, agora ele tera acesso a um conjunto diferente de objetos, logo, uma syscall causa um **domain switch**.
+
+### Acess control lists
+
+Maneira de expressar os dominios. Uma das tecnicas é associar a cada objeto uma lista de todos os dominios que podem acessar aquele objeto, chamamos isso de **acess control list (ACL)**. Se dissermos que cada usuario corresponde a um dominio diferente, podemos dizer que, por exemplo, cada arquivo vai ter uma lista especificando quais usuarios podem acessa-lo, assim como as operações que cada um pode fazer. Essa lista é ordenada para facilitar a busca.
+
+As permissões mais basicas são as de leitura, ecrita e execução, porem, outras permissões podem ser atribuidas/criadas.
+
+Podemos tambem criar **grupos**, assim, todos os usuarios do grupo tem o mesmo conjunto de permissões.
+
+### Capabilities
+
+Outra maneira de expressar os dominios é, para cada processo, associar uma lista dos objetos que podem ser acessados e quais operações são permitidas, chamamos isso de **capability list** ou **C-list**, onde os itens individuais são chamados de **capabilites**. No UNIX, cada item dessa lista contem um _i-node_ (para identificar o objeto) e um bitmap (para identificar as permissões). As listas em si tambem são objetos, e podem apontar para outras listas, facilitando a geração de **subdominios**.
+
+Para mantermos essa lista protegida, a deixamos no _user space_, mas deixamos as Capabilities criptografas.
+
+# TCP/IP
+
+## O modelo de referencia OSI
+
+Tráfego na rede é gerado quando ocorre uma solicitação na rede. A solicitação tem de ser alterada daquilo que o usuário vê para um formato que possa ser utilizado na rede.
+
+O tráfego da rede é gerenciado na forma de **pacotes de dados**, a informação de um usuário transformado em um formato entendido pela rede. O modelo OSI tem 07 Camadas, e é utilizado como uma diretriz pelos desenvolvedores de programas de rede.
+
+As 7 camadas do modelo OSI operam como blocos de construção para os pacotes de dados, onde cada camada adiciona mais informação. **Cabeçalho** de uma camada é simplesmente a informação que detalha o formato do pacote de dados, é recebido na camada correspondente do cliente receptor e é utilizado para entender o formato do pacote. Uma camada so se comunica com camadas adjacentes (diretamente acima ou abaixo).
+
+- **Aplicação**: faz a interface entre o protocolo de comunicação e o aplicativo.
+- **Apresentação**: codifica o dado para um formato entendido pelo protocolo. È nesta camada que pode, casualmente, ser feita a compressão de dados e criptografia.
+- **Sessão**: permite que duas aplicações de computadores diferentes estabeleçam uma sessão de comunicação.
+- **Transporte**: é responsável pela fragmentação no transmissor e montagem no receptor, dos dados em **pacotes**.
+- Rede: converte os endereços lógicos em endereços físicos e determina qual rota vai ser seguida pelos pacotes.
+- Link de dados (**Enlace**): adiciona informações como endereço da placa de rede de origem, de destino, dados de controle e o CRC, um esquema para detecção de erros na transmissão.
+- **Física**: transforma a informação em sinais compatíveis com o meio por onde os dados devem ser transmitidos, elétrico ou óptico, por exemplo.
+
+Fluxo do remetente: aplicação -> fisica
+Fluxo do receptor: fisica -> aplicação
+
+## Os protocolos TCP/IP
+
+Modelo de trafego em rede que possui apenas 4 camadas.
+
+- **Aplicação**: HTTP, FTP.
+- **Transporte**: TCP e UDP.
+- **Internet**: IP, ICMP, ARP e RARP. Principal responsavel pelo endereçamento e roteamento da rede. Reponsavel pela fragmentação de pacotes, por monta-los e desmonta-los.
+- **Interface com rede**: gateways e roteadores.
+
+### ARP protocol
+
+**Address Resolution Protocol** ou ARP é um protocolo usado para encontrar um endereço da camada de enlace a partir do endereço da camada de rede (como um endereço IP). O emissor difunde em broadcast um pacote ARP contendo o endereço IP de outro host e espera uma resposta com um endereço MAC respectivo. É utilizado primordialmente para traduzir Endereço IP para Endereço MAC.
+
+### RARP protocol
+
+**Reverse Address Resolution Protocol** (RARP) associa um endereço MAC conhecido a um endereço IP. Um dispositivo de rede, como uma estação de trabalho sem disco, por exemplo, pode conhecer seu endereço MAC, mas não seu endereço IP.
+
+### ICMP protocol
+
+**Internet Control Message Protocol**, é utilizado para fornecer relatórios de erros à fonte original.
+Algumas das possíveis mensagens são:
+• Rede fora de alcance;
+• Nó fora de alcance;
+• Porta fora de alcance;
+• Nó desconhecido;
+• Rede destino desconhecida;
+• Tempo de vida do pacote excedido;
+• Pedido de eco (ping);
+• Resposta de eco (pong);
+
+### IP protocol
+
+Roteia pacotes de um nó para o outro, na mesma rede ou em redes distintas. Usa comutação por pacotes com datagrama não-confiável. Ou seja, não garante a entrega dos pacotes e é não-orientado à conexão. Define também o endereçamento dos nós, o endereço IP.
+
+O **endereço IP** é identificação de um equipamento conectado a Internet. Todos os equipamentos devem ter um endereço IP associado e único que será utilizado na comunicação entre os equipamentos.
+
+### Camada de transporte
+
+Arquitetura TCP/IP especifica 2 tipos de protocolos:
+- TCP (Transmission Control Protocol). Orientado à conexão e garante a transferência
+confiável de dados
+- UDP (User Datagram Protocol). Não orientado à conexão, simples extensão do IP e não garante a entrega de dados
+
+### UDP
+
+Muito mais rápido e bastante simples. Não orientado à conexão, não executa controle de fluxo, controle de erro e sequenciamento. Devido a sua simplicidade é considerado não confiável.Segmentos podem não chegar ou chegar fora de ordem.
+
+Utilizado em aplicações de midia, que são tolerantes a falhas, como streaming.
+
+### TCP
+
+Serviço confiável, garante que os dados serão entregues na forma que foram enviados. É mais complexo que o UDP e o principal protocolo atualmente. Recebe um fluxo da aplicação e o divide em partes, a camada de rede aceita cada parte como um segmento distinto, e o destino restaura o fluxo original. O destino retorna um numero de confirmação quando recebe algo, dizendo qual a proxima coisa que deve ser enviada, se demorar muito para essa mensagem chegar, o ultimo segmento é reenviado
+
+O fluxo é constituido por: estabelecimento da conexão -> transferencia de dados -> termino da conexão.
