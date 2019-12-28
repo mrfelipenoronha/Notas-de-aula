@@ -37,3 +37,20 @@ Books used during my graduation:
 - Differentiable functions and series
     - James Stewart - Calculus Vol.2
     - Spivak - Calculus manifolds
+
+- Fundamental Concepts in Programming Languages
+    - [Programming Languages: Application and Interpretation](http://cs.brown.edu/courses/cs173/2012/book/)
+
+- Graph Algorithms
+    - R. Sedgewick, Algorithms in C (part 5: Graph Algorithms)
+    - [P. Feofiloff, Algoritmos para Grafos em C (via Sedgewick)](https://www.ime.usp.br/~pf/algoritmos_para_grafos/)
+
+- Analysis of Algorithms
+    - Cormen, Introduction to algotithms
+    - Kleinberg and Tardos, Algorithm Design
+
+- Operating Systems
+    - Tanenbaum, Operating Systems: Design and Implementation
+
+- Knowledge-based Systems
+    - Brachman, Knowledge Representation and Reasoning
