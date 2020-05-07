@@ -222,3 +222,86 @@ fun and_search(states, problem, path) returns a conditional plan or failure
 Quando queremos encontrar apenas 1 caminho na arvore de busca, e tal caminho tem tamanho polinomial, normalmente estamos tentando resolver problemas que estão em `NP` ou `NP-completo`.
 
 Agora, por exemplo, em uma arvore E/OU. Para checar se todos os caminhos a partir de um _nó E_ vou gastar tempo exponencial. Porém, consigo checar muito rapidamente se uma caminho dado não é valido. Logo, aqui, temos um _contra exemplo testemunha_ que tem tamanho polinomial, e, logo, problemas desse tipo estão em `coNP`.
+
+## Prolog
+
+Linguem que usa logica para representar conhecimento.
+
+### Recursão
+
+Uma lista é simplemente um conjunto de elementos entre colchetes, como `[a,b,c,d,e]`.
+
+## Introdução ao estudo computacional da lingaguem
+
+Aqui, vamos ver maneiras formais de lidar com linguagem. Uma linguagem tem como elementos: sons, ritmos (prosodia), fonemas, palavras, sintagmas (frases), significados (semantica) e usos.
+
+### A estrutura da frase
+
+A palavra é a unidade basica de analise da frase. A cada palavra é atribuida uma catergoria morfo-sintatica, a classe gramatical. Temos como exemplos:
+
+- Deteminante, conhecido como artigo;
+- Nome, conhecido como substantivo;
+- Verbo transitivo.
+
+Um **sintagmas** são componentes formados pela combinação de palavras. É o que conhecemos por frases. Além disso, temos que categorias sintaticas podem ser formada por outra sequencia de otras categorias, assim, `c1, c2, ..., cn -> C`.
+
+Juntando todas as regras temos uma **gramatica**, que gera e reconhece a frase. Com isso, conseguimos criar uma arvore sintatica, que sera composta por cada classe que gera cada outra classe, ate chegarmos na lasse mais superior que representa a raiz.
+
+### Linguagem formais
+
+Seja _V_ um conjunto não vazio de simbolos ou palavras. Uma linguagem _L_ sobre _V_ é um conjunto de cadeias formadas com os elementos de _V_. Se _r_ e _s_ são sequencias em _V*_, _rs_ representa a sequencia resultante de sua concatenação. _e_ é a sequencia vazia, para isso, _s: se = s = es_.
+
+### Gramaticas formais
+
+Uma gramatica _G_ é uma tupla `G = <V, T, P, S>`, onde
+
+- _V_ é um conjunto não vazio, chamado vocabulario
+- _T c V_ é um conjunto nao vazio de simbolos terminais
+- _N = V-T_ é o conjunto de simbolos não terminais
+- _S e N_ é o simbolo incial
+- _P_ é um conjunto finito de regras da forma _a->b_
+
+# Raciocionio probabilistico
+
+Probabilidade é uma medida de incerteza. Diz como as coisas funcionam na media, ou seja, reflete coisas sobre uma população e não sobre individuos.
+
+Uma **evidencia** se refere a parte observavel do mundo (sensores, sintomas). O **desconhecido** se refere a parte não observavel (evento futuros, comportamento do adversario).
+
+Podemos fazer buscas sobre espaços probabilisticos, onde cada transição de estado tem uma probabilidade de acontecer.
+
+## Probalidade discreta
+
+Quando temos um espaço finito de resultados possiveis. O **espaço amostral** contem todos os resultados possiveis. Um **evento** é um subconjunto do EA. Uma **função de probabilidade** assossia um valor não negativo a um evento, é uma medida de incerteza sobre o evento. 
+
+### Axiomas
+
+- Normalização: a soma da probalidade de todos os eventos do espaço amostral é 1;
+- Aditividade: evento disjuntos tem probabilidades aditivas. Se a interseção de A e B é vazia, então _P(A u B) = P(A) + P(B)_.
+
+## Interpretação frequentista
+
+Probalidade é a frequencia relativa no longo prazo de observações de um experimento. Porém isso tem varias limitações.
+
+## Probabilidade condicional
+
+Medida de incerteza assumindo que o estado do mundo é parcialmente conhecido. _P(A|B) = P(A inter B) / P(B)_ é lido como _probabilidade de A dado B_.
+
+Temos que _P(A u B | C) = P(A|C) + P(B|C) -P(A inter B | C)_.
+
+### Regra do produto
+
+MUITO IMPORTANTE. Permite decompor probabilidade de eventos em probabilidades condicionais.
+
+_P(A inter B) = P(A|B)P(B) = P(B|A)P(A)_.
+
+## Regra de Bayes
+
+_P(A|B) = P(B|A)P(A)/P(B)_.
+
+## Arvore de probabilidades
+
+Representação grafica do espaço de probabilidades. Cada nó representa um evento, raiz é o espaço amostral. Nós irmãos representam partições. Arcos são anotados com probabilidade condicional de eventos dados eventos ancestrais.
+
+## Variavel aleatoria
+
+Permite agrupar eventos similares. Uma variavel aleatoria _X_ permite mapear cada estado do espaço amostral para um valor real.
