@@ -305,3 +305,23 @@ Representação grafica do espaço de probabilidades. Cada nó representa um eve
 ## Variavel aleatoria
 
 Permite agrupar eventos similares. Uma variavel aleatoria _X_ permite mapear cada estado do espaço amostral para um valor real.
+
+## Cadeia de Markov
+
+Podemos usar cadeias de markov com a probalidade condicional para sabermos a probabilidade de um evento em um certo instante.
+
+Com isso, temos que podemos ter estados _X1 -> X2 -> X3 -> ... -> Xn_. E com isso temos que `P(X1,..., Xn) = P(X1)P(X2|X1)...P(Xn|Xn-1)`, uma cadeia de Markov simples.
+
+Com isso, conseguimos fazer um bom planejamento de ações a serem tomadas. Pois, para calcularmos a probabilidade a posteriori a unica outra que importa é a probabilidade do estado imediatamente anterior.
+
+Se X e Y sao variaveis independentes, então temos que `P(Y| X, Z) = P(Y| Z)`.
+
+### Busca EXPECTIMAX
+
+Busca em que eu quero maximar o valor da esperança estatistica. Os nós terminais/folhas possuem valores/utilidades associadas. Os nós random computam o valor esperado. Os nós _max_ escolhem a ação com maior valor. Com isso, podemos ter uma arvore da seguinte cara: `MAX -> RANDOM -> VAL`.
+
+Uma arvore dessa maneira pode ser gerada atravez de um processo de busca Markoviano.
+
+# Aprendizado por reforço
+
+Chegamos a uma politica otima olhando a avaliação do _Q-valor_. 

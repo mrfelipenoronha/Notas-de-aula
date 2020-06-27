@@ -54,3 +54,14 @@ Books used during my graduation:
 
 - Knowledge-based Systems
     - Brachman, Knowledge Representation and Reasoning
+    
+- Computacional Geometry
+    - Joseph O'Rourke, Computational geometry
+    - Kleingberg and Tardos, Algorithm design
+    - Mark de Berg, Computational geometry
+
+- Artificial Intelligence
+    - Russel and Norvig, AI: a modern approach
+
+- Introduction to Machine Learning
+    - Abu-Mostafa, Learning from data
